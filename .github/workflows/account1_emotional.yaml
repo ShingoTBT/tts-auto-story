@@ -35,11 +35,11 @@ jobs:
       - name: Render images via existing tool
         run: python render_images.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
-      # --- Slack通知ステップも別途追加予定 ---
-      # - name: Notify Slack
-      #   env:
-      #     SLACK_WEBHOOK_ACCOUNT1: ${{ secrets.SLACK_WEBHOOK_ACCOUNT1 }}
-      #   run: node notify_slack.js accounts/account1_emotional.yaml
+      - name: Notify ChatWork
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+        run: python notify_chatwork.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
       - name: Commit updated title log
         run: |
