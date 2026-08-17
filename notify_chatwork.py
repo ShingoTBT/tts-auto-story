@@ -76,15 +76,11 @@ def main():
 
     display_name = config.get("display_name", config["account_name"])
 
-    # 1. 投稿完了報告(テキスト文のみ)
+    # 1. 投稿完了報告(テキスト文のみ・画像添付なし)
     message_body = source_text
     send_message(token, room_id, message_body)
 
-    # 2. 画像を順番に送信
-    for i, image_path in enumerate(image_paths, start=1):
-        send_file(token, room_id, image_path, message=f"{i}枚目")
-
-    print(f"ChatWorkに通知を送信しました（画像{len(image_paths)}枚）")
+    print("ChatWorkにテキストのみ通知しました")
 
 
 if __name__ == "__main__":
