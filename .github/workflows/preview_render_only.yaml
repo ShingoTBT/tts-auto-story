@@ -1,0 +1,41 @@
+name: preview_render_only
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
+      - name: Install Japanese fonts and configure aliases
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
+          sudo mkdir -p /etc/fonts/conf.d
+          sudo cp fontconfig/local.conf /etc/fonts/local.conf
+          sudo fc-cache -f
+
+      - name: Render preview images only (no posting)
+        run: python render_images.py accounts/account1_emotional.yaml outputs/account1_emotional/preview_text.txt
+
+      - name: Commit preview images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git diff --staged --quiet || git commit -m "chore: preview render"
+          git push
