@@ -73,17 +73,12 @@ def main():
     data = get_follower_count(zernio_key, account_id)
     print("Zernio follower-stats response:", data)
 
-    # レスポンス構造からフォロワー数を抽出(構造は実際のレスポンスを見て調整)
+    # レスポンス構造からフォロワー数を抽出("accounts"配列内のcurrentFollowers)
     follower_count = None
     try:
-        accounts = data.get("accounts") or data.get("data") or []
+        accounts = data.get("accounts", [])
         if accounts:
-            entry = accounts[0]
-            follower_count = (
-                entry.get("followerCount")
-                or entry.get("latestFollowerCount")
-                or entry.get("count")
-            )
+            follower_count = accounts[0].get("currentFollowers")
     except Exception as e:
         print("パース時に問題がありました:", e)
 
