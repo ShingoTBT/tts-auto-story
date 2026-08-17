@@ -147,7 +147,13 @@ def main():
 
         print(f"[試行{attempt}] フォーマット不正: {message}")
         if attempt == max_retries:
-            print("最大リトライ回数に達しました。生成を中止します。")
+            print("最大リトライ回数に達しました。デバッグ用に最後の出力を保存して中止します。")
+            debug_dir = Path(config["output_dir"])
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            debug_path = debug_dir / f"debug_failed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(debug_path, "w", encoding="utf-8") as f:
+                f.write(f"[エラー: {message}]\n\n--- 生成された内容 ---\n\n{output_text}")
+            print(f"デバッグファイル: {debug_path}")
             sys.exit(1)
 
     # 出力先ディレクトリ作成
