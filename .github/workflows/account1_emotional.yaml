@@ -2,10 +2,12 @@ name: account1_emotional_story
 
 on:
   schedule:
-    # 毎朝7:00 JST = 前日22:00 UTC
-    - cron: "0 22 * * *"
-    # 毎夕19:00 JST = 当日10:00 UTC
-    - cron: "0 10 * * *"
+    # 毎朝6:00 JST = 前日21:00 UTC
+    - cron: "0 21 * * *"
+    # 正午12:00 JST = 03:00 UTC
+    - cron: "0 3 * * *"
+    # 18:00 JST = 09:00 UTC
+    - cron: "0 9 * * *"
   workflow_dispatch: {}  # 手動実行もできるようにしておく
 
 jobs:

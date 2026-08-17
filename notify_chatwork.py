@@ -76,15 +76,8 @@ def main():
 
     display_name = config.get("display_name", config["account_name"])
 
-    # 1. 投稿完了報告メッセージ
-    message_body = (
-        f"[info][title]{display_name}: 新しいストーリーをTikTokに自動投稿しました[/title]\n"
-        f"タイトル: {title}\n"
-        f"画像: {len(image_paths)}枚\n"
-        f"（この通知は完了報告です。特に操作は不要です）\n"
-        f"---\n"
-        f"{caption_text}[/info]"
-    )
+    # 1. 投稿完了報告(テキスト文のみ)
+    message_body = source_text
     send_message(token, room_id, message_body)
 
     # 2. 画像を順番に送信
