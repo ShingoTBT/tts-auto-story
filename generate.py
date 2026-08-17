@@ -65,12 +65,14 @@ def load_system_prompt(prompt_file: str) -> str:
 
 
 def build_user_message(recent_titles: list[str]) -> str:
+    base = "新しい感動ストーリーを1本、指定フォーマット・全ルールを厳守して生成してください。\nテーマ：おまかせ"
+
     if not recent_titles:
-        return "新しい感動ストーリーを1本、指定フォーマットで生成してください。"
+        return base
 
     titles_block = "\n".join(f"- {t}" for t in recent_titles)
     return (
-        "新しい感動ストーリーを1本、指定フォーマットで生成してください。\n\n"
+        f"{base}\n\n"
         "以下は直近に使用済みのタイトル一覧です。内容・切り口ともに重複や類似がないようにしてください。\n"
         f"{titles_block}"
     )
