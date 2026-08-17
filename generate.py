@@ -65,7 +65,10 @@ def load_system_prompt(prompt_file: str) -> str:
 
 
 def build_user_message(recent_titles: list[str]) -> str:
-    base = "新しい感動ストーリーを1本、指定フォーマット・全ルールを厳守して生成してください。\nテーマ：おまかせ"
+    base = (
+        "新しい感動ストーリーを1本、指定フォーマット・全ルールを厳守して生成してください。\n"
+        "テーマ：家族愛に関するもの、または涙を誘うものを中心に選んでください。"
+    )
 
     if not recent_titles:
         return base
