@@ -165,9 +165,12 @@ def main():
     print(f"生成完了: {output_path}")
     print(f"タイトル: {title}")
 
-    # GitHub Actions側で後続ステップ(Puppeteer画像化・Slack通知)が
-    # このファイルを参照できるよう、パスを標準出力に出しておく
-    print(f"::set-output name=output_path::{output_path}")
+    # GitHub Actions側で後続ステップ(画像化・通知)がこのファイルを
+    # 参照できるよう、GITHUB_OUTPUTにパスを書き出しておく
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"output_path={output_path}\n")
 
 
 if __name__ == "__main__":

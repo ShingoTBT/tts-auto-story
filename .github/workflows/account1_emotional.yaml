@@ -23,15 +23,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
       - name: Generate story
         id: generate
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python generate.py accounts/account1_emotional.yaml
 
-      # --- 画像化ステップ(Puppeteer)は別途追加予定 ---
-      # - name: Render images via existing tool
-      #   run: node puppeteer_render.js accounts/account1_emotional.yaml
+      - name: Render images via existing tool
+        run: python render_images.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
       # --- Slack通知ステップも別途追加予定 ---
       # - name: Notify Slack
