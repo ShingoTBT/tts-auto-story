@@ -45,6 +45,13 @@ jobs:
         if: steps.generate.outcome == 'success'
         run: python render_images.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
+      - name: Post to TikTok via Zernio
+        if: steps.generate.outcome == 'success'
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
+        run: python post_to_tiktok.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
+
       - name: Notify ChatWork
         if: steps.generate.outcome == 'success'
         env:

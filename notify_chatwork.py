@@ -76,12 +76,12 @@ def main():
 
     display_name = config.get("display_name", config["account_name"])
 
-    # 1. 完了通知メッセージ
+    # 1. 投稿完了報告メッセージ
     message_body = (
-        f"[info][title]{display_name}: 新しいストーリーができました[/title]\n"
+        f"[info][title]{display_name}: 新しいストーリーをTikTokに自動投稿しました[/title]\n"
         f"タイトル: {title}\n"
         f"画像: {len(image_paths)}枚\n"
-        f"確認して問題なければ、そのままTikTok/Threadsに投稿してください。\n"
+        f"（この通知は完了報告です。特に操作は不要です）\n"
         f"---\n"
         f"{caption_text}[/info]"
     )
