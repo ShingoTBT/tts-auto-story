@@ -46,7 +46,9 @@ jobs:
         run: python render_images.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
       - name: Post to TikTok via Zernio
+        id: post_tiktok
         if: steps.generate.outcome == 'success'
+        continue-on-error: true
         env:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}

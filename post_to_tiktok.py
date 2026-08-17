@@ -94,8 +94,25 @@ def main():
     for u in image_urls:
         print(" -", u)
 
-    result = create_post(api_key, account_id, image_urls, caption)
-    print("Zernio投稿結果:", result)
+    try:
+        result = create_post(api_key, account_id, image_urls, caption)
+        print("Zernio投稿結果:", result)
+    except requests.exceptions.HTTPError as e:
+        debug_dir = Path(config["output_dir"])
+        debug_dir.mkdir(parents=True, exist_ok=True)
+        debug_path = debug_dir / f"zernio_error_{source_text_path.stem}.txt"
+        body = ""
+        try:
+            body = e.response.text
+        except Exception:
+            pass
+        with open(debug_path, "w", encoding="utf-8") as f:
+            f.write(f"status_code: {e.response.status_code if e.response is not None else 'N/A'}\n")
+            f.write(f"response_body: {body}\n")
+            f.write(f"image_urls: {image_urls}\n")
+        print("Zernio APIエラー。詳細:", debug_path)
+        print(body)
+        raise
 
 
 if __name__ == "__main__":
