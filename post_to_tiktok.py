@@ -36,23 +36,25 @@ def build_public_image_urls(config: dict, file_prefix: str, count: int) -> list[
     return urls
 
 
-def extract_caption(source_text: str) -> str:
-    """先頭のタイトル行(■...)とハッシュタグ行を組み合わせてキャプションにする"""
+def extract_title_and_hashtags(source_text: str) -> tuple[str, str]:
+    """1行目のタイトル(■から始まる)と、ハッシュタグ行を個別に取り出す"""
     lines = [l for l in source_text.split("\n") if l.strip() != ""]
     title = lines[0].strip() if lines else ""
     hashtag_lines = [l for l in lines if l.strip().startswith("#")]
-    hashtags = hashtag_lines[0] if hashtag_lines else ""
-    return f"{title}\n\n{hashtags}".strip()
+    hashtags = hashtag_lines[0].strip() if hashtag_lines else ""
+    return title, hashtags
 
 
-def create_post(api_key: str, account_id: str, image_urls: list[str], caption: str) -> dict:
+def create_post(api_key: str, account_id: str, image_urls: list[str], title: str, hashtags: str) -> dict:
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
     payload = {
-        "content": caption,
+        # content(=タイトル欄)はハッシュタグ等が自動で除去されるため、
+        # ハッシュタグはtiktokSettings.descriptionの方に入れる
+        "content": title,
         "mediaItems": [{"type": "image", "url": url} for url in image_urls],
         "platforms": [
             {"platform": "tiktok", "accountId": account_id}
@@ -62,7 +64,8 @@ def create_post(api_key: str, account_id: str, image_urls: list[str], caption: s
             "allow_comment": True,
             "media_type": "photo",
             "photo_cover_index": 0,
-            "description": caption,
+            "description": hashtags,  # キャプション欄はハッシュタグのみ
+            "auto_add_music": True,   # BGM: TikTok推奨曲を必ず自動付与(なし不可)
         },
         "publishNow": True,
     }
@@ -85,7 +88,7 @@ def main():
     account_id = os.environ["ZERNIO_TIKTOK_ACCOUNT_ID"]
 
     source_text = source_text_path.read_text(encoding="utf-8")
-    caption = extract_caption(source_text)
+    title, hashtags = extract_title_and_hashtags(source_text)
 
     file_prefix = source_text_path.stem
     image_urls = build_public_image_urls(config, file_prefix, count=3)
@@ -93,9 +96,11 @@ def main():
     print("投稿する画像URL:")
     for u in image_urls:
         print(" -", u)
+    print("タイトル欄:", title)
+    print("キャプション欄:", hashtags)
 
     try:
-        result = create_post(api_key, account_id, image_urls, caption)
+        result = create_post(api_key, account_id, image_urls, title, hashtags)
         print("Zernio投稿結果:", result)
     except requests.exceptions.HTTPError as e:
         debug_dir = Path(config["output_dir"])
