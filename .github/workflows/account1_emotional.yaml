@@ -45,6 +45,15 @@ jobs:
         if: steps.generate.outcome == 'success'
         run: python render_images.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
+      - name: Commit and push generated content (images must be public before posting)
+        if: steps.generate.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/ outputs/
+          git diff --staged --quiet || git commit -m "chore: add generated story ($(date +'%Y-%m-%d %H:%M'))"
+          git push
+
       - name: Post to TikTok via Zernio
         id: post_tiktok
         if: steps.generate.outcome == 'success'
@@ -61,11 +70,11 @@ jobs:
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: python notify_chatwork.py accounts/account1_emotional.yaml "${{ steps.generate.outputs.output_path }}"
 
-      - name: Commit updated title log
+      - name: Commit any remaining changes (e.g. error debug files)
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add logs/ outputs/
-          git diff --staged --quiet || git commit -m "chore: add generated story ($(date +'%Y-%m-%d %H:%M'))"
-          git push
+          git diff --staged --quiet || git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))"
+          git diff --staged --quiet || git push || (git pull --rebase && git push)
