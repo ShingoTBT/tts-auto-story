@@ -1,0 +1,13 @@
+account_name: "account1_emotional"
+display_name: "感動ストーリー(既存アカウント)"
+prompt_file: "prompts/emotional_story_v3.md"
+titles_log_file: "logs/account1_emotional_titles.jsonl"
+output_dir: "outputs/account1_emotional"
+notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT1"
+schedule_jst:
+  - "07:00"
+  - "19:00"
+# 画像化ツール（Puppeteerで自動操作する既存index.phpのURL）
+image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
