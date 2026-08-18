@@ -19,20 +19,33 @@
   post_id=17945515482055435 | コメント数=175 | ★対象
     投稿本文冒頭: 友人の引越し手伝いを頼まれて、朝から夕方まで丸一日かけて作業したんですが😅
 お礼が「ありがとう、またよろしく」の一言だけ...
-    抽出キーワード: 引越し手伝いお礼なし
+    抽出キーワード: 引越し手伝いお礼ギフト
     関連商品が見つからず、コメントはスキップされる見込み
   post_id=18083295794690843 | コメント数=5 | 未達
   post_id=18483011950111818 | コメント数=11 | 未達
   post_id=18123528826878910 | コメント数=1 | 未達
   post_id=17908738821461854 | コメント数=13 | 未達
   post_id=18118752514694616 | コメント数=16 | 未達
-  [エラー] post_id=18104218385617621: HTTPSConnectionPool(host='zernio.com', port=443): Read timed out. (read timeout=20)
+  post_id=18104218385617621 | コメント数=50 | ★対象
+    投稿本文冒頭: 友達の子供の誕生日に毎年プレゼントを贈り続けて5年。
+でも、うちの子には一度も何もなくて😅
+最初は「子供いないから気を使...
+    抽出キーワード: 子供向けプレゼント
+    商品: 対象年齢5歳6歳7歳8歳 Fiido Kidz フィードキッズ お子様向け3WA
+    コメント候補:
+      子供向けプレゼントといえば、やっぱりこれだよね！
+      　↓↓ad
+      https://hb.afl.rakuten.co.jp/hgc/g00u1z02.yzkmz514.g00u1z02.yzkn0d74/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fswallowscooter%2Ffiidokidz%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fswallowscooter%2Fi%2F10000062%2F&rafcid=wsc_i_is_fbd3519e-9fb3-4bdc-b8b7-67ccbb5a3bb8
   post_id=18099628091198343 | コメント数=56 | ★対象
     投稿本文冒頭: 友人の結婚式、欠席したいと伝えたら「非常識」と責められました😅
 遠方で交通費だけで3万円以上かかるし、ご祝儀と合わせると...
-    抽出キーワード: ## 正直に言うと、欠席で全然いいと思い
-    関連商品が見つからず、コメントはスキップされる見込み
+    抽出キーワード: ご祝儀袋
+    商品: 【名入れ無料・24時間以内に発送】祝儀袋26種あり (金額目安 1〜5万円程度)
+    コメント候補:
+      ご祝儀袋といえば、やっぱりこれだよね！
+      　↓↓ad
+      https://hb.afl.rakuten.co.jp/hgc/g00tecy2.yzkmz97b.g00tecy2.yzkn03a3/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fbishodo%2Fcompass578%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fbishodo%2Fi%2F10000877%2F&rafcid=wsc_i_is_fbd3519e-9fb3-4bdc-b8b7-67ccbb5a3bb8
   post_id=18426528172180919 | コメント数=11 | 未達
   post_id=17970433503131767 | コメント数=4 | 未達
 
-  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 2 件
+  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 3 件
