@@ -9,6 +9,7 @@ threads_engagement_v1.mdプロンプトで、共感/議論を呼ぶ創作エピ�
 
 import sys
 import os
+import re
 import datetime
 from pathlib import Path
 
@@ -16,6 +17,11 @@ import yaml
 import anthropic
 
 from generate import load_recent_titles, append_title_log, load_system_prompt
+
+
+def enforce_period_linebreaks(text: str) -> str:
+    """句点(。)のたびに改行する(すでに改行済みなら二重にしない)"""
+    return re.sub(r"。(?!\n)", "。\n", text)
 
 
 def load_account_config(config_path: str) -> dict:
@@ -89,6 +95,7 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        output_text = enforce_period_linebreaks(output_text)
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:
             break
