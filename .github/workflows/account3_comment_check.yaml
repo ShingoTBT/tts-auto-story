@@ -1,0 +1,39 @@
+name: account3_comment_check
+
+on:
+  schedule:
+    # 毎時30分(投稿の30分後にチェック、24回/日)
+    - cron: "30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check comments and reply if needed
+        env:
+          ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}
+          RAKUTEN_PROXY_SECRET: ${{ secrets.RAKUTEN_PROXY_SECRET }}
+        run: python check_and_reply_comments.py accounts/account3_threads.yaml
+
+      - name: Commit updated post log
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git diff --staged --quiet || git commit -m "chore: comment check update ($(date +'%Y-%m-%d %H:%M'))"
+          git diff --staged --quiet || git push || (git pull --rebase && git push)

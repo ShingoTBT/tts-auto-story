@@ -1,0 +1,15 @@
+account_name: "account3_threads"
+display_name: "話題のニュース(Threads)_アカウント3"
+chatwork_label: "話題のニュース_アカウント3(Threads)"
+threads_url: "https://www.threads.com/@iikotobiyori"
+prompt_file: "prompts/threads_news_v1.md"
+titles_log_file: "logs/account3_threads_titles.jsonl"
+output_dir: "outputs/account3_threads"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+min_chars: 350
+max_chars: 450
+zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT3"
+zernio_account_id_env: "ZERNIO_THREADS_ACCOUNT_ID"
+comment_threshold: 20
+comment_check_days: 2  # 当日・前日分をチェック対象にする

@@ -68,12 +68,12 @@ def main():
 
     display_name = config.get("display_name", config["account_name"])
     chatwork_label = config.get("chatwork_label", display_name)
-    tiktok_url = config.get("tiktok_url", "")
+    post_url = config.get("tiktok_url") or config.get("threads_url", "")
 
     # 1. 投稿完了報告(指定テンプレート)
     message_body = (
         f"[info]投稿通知：{chatwork_label}\n"
-        f"{tiktok_url}[hr]{source_text}[/info]"
+        f"{post_url}[hr]{source_text}[/info]"
     )
     send_message(token, room_id, message_body)
 

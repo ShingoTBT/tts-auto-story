@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""
+account3(Threads)の当日・前日分の投稿について、コメント数を確認し、
+しきい値(デフォルト20件)を超えていて未対応のものに、楽天商品リンク付きの
+コメントを自動投稿する。
+
+使い方:
+    python check_and_reply_comments.py accounts/account3_threads.yaml
+"""
+
+import sys
+import os
+import json
+import datetime
+from pathlib import Path
+
+import yaml
+import requests
+import anthropic
+
+from generate import load_system_prompt
+from rakuten_product_search import search_product
+
+ZERNIO_API_BASE = "https://zernio.com/api/v1"
+
+
+def load_account_config(config_path: str) -> dict:
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def load_posted_threads(log_path: str) -> list[dict]:
+    path = Path(log_path)
+    if not path.exists():
+        return []
+    records = []
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    return records
+
+
+def rewrite_posted_threads(log_path: str, records: list[dict]) -> None:
+    with open(log_path, "w", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+def is_within_check_window(posted_at_str: str, days: int) -> bool:
+    posted_at = datetime.datetime.fromisoformat(posted_at_str)
+    now = datetime.datetime.now()
+    return (now - posted_at) <= datetime.timedelta(days=days)
+
+
+def get_comment_count(api_key: str, post_id: str) -> int:
+    headers = {"Authorization": f"Bearer {api_key}"}
+    r = requests.get(f"{ZERNIO_API_BASE}/posts/{post_id}/comments", headers=headers, timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    comments = data.get("comments", data.get("data", []))
+    return len(comments)
+
+
+def post_reply_comment(api_key: str, post_id: str, text: str) -> dict:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "content": text,
+        # プレビューカードを抑制する試み(Threads側で効かない可能性あり、要検証)
+        "platformSpecificData": {"unfurlLinks": False},
+    }
+    r = requests.post(f"{ZERNIO_API_BASE}/posts/{post_id}/comments", headers=headers, json=payload, timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+
+def extract_topic_keyword(post_text: str, model: str) -> str:
+    """投稿本文から、商品検索・コメント文言に使う短いキーワードをClaudeに抽出させる"""
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=model,
+        max_tokens=100,
+        system=(
+            "与えられた文章の主題を表す、商品検索に使える短い日本語キーワード(1〜3語程度)"
+            "だけを出力してください。説明や記号は一切不要です。"
+        ),
+        messages=[{"role": "user", "content": post_text}],
+    )
+    parts = [b.text for b in response.content if b.type == "text"]
+    return "".join(parts).strip()
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("使い方: python check_and_reply_comments.py <account_config.yaml>")
+        sys.exit(1)
+
+    config = load_account_config(sys.argv[1])
+    api_key = os.environ[config.get("zernio_api_key_env", "ZERNIO_API_KEY")]
+    threshold = config.get("comment_threshold", 20)
+    check_days = config.get("comment_check_days", 2)
+
+    log_path = Path(config["output_dir"]) / "posted_threads.jsonl"
+    records = load_posted_threads(str(log_path))
+
+    updated = False
+
+    for record in records:
+        if record.get("commented"):
+            continue
+        if not record.get("post_id"):
+            continue
+        if not is_within_check_window(record["posted_at"], check_days):
+            continue
+
+        post_id = record["post_id"]
+
+        try:
+            count = get_comment_count(api_key, post_id)
+        except Exception as e:
+            print(f"コメント数取得エラー (post_id={post_id}): {e}")
+            continue
+
+        print(f"post_id={post_id}: コメント数={count}")
+
+        if count <= threshold:
+            continue
+
+        # 元投稿本文を読み込み、商品検索キーワードを抽出
+        text_file = record.get("text_file")
+        if not text_file or not Path(text_file).exists():
+            print(f"元テキストファイルが見つかりません: {text_file}")
+            continue
+        post_text = Path(text_file).read_text(encoding="utf-8")
+
+        keyword = extract_topic_keyword(post_text, config["model"])
+        print(f"商品検索キーワード: {keyword}")
+
+        product = search_product(keyword)
+        if not product:
+            print("関連商品が見つからなかったため、今回はコメントをスキップします")
+            continue
+
+        comment_text = f"{keyword}といえば、やっぱりこれだよね！pr\n　↓\n{product['url']}"
+
+        try:
+            post_reply_comment(api_key, post_id, comment_text)
+            print(f"コメント投稿完了 (post_id={post_id})")
+            record["commented"] = True
+            updated = True
+        except Exception as e:
+            print(f"コメント投稿エラー (post_id={post_id}): {e}")
+
+    if updated:
+        rewrite_posted_threads(str(log_path), records)
+        print("投稿ログを更新しました")
+
+
+if __name__ == "__main__":
+    main()
