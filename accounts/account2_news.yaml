@@ -1,7 +1,7 @@
 account_name: "account2_news"
 display_name: "話題のニュース_アカウント2"
 chatwork_label: "話題のニュース_アカウント2"
-tiktok_url: "https://tiktok.com/@xxxxx"  # TikTokアカウント作成後、実際のURLに差し替え
+tiktok_url: "https://tiktok.com/@user8258702569269"
 prompt_file: "prompts/news_v1.md"
 titles_log_file: "logs/account2_news_titles.jsonl"
 output_dir: "outputs/account2_news"
