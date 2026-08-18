@@ -90,7 +90,7 @@ def main():
     min_chars = config.get("min_chars", 200)
     max_chars = config.get("max_chars", 260)
 
-    max_retries = 5
+    max_retries = 8
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
