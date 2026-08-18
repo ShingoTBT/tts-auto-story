@@ -121,6 +121,16 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = output_dir / f"{timestamp}.txt"
 
+    # Threads側で「段落先頭の#」が認識されない現象への対策として、
+    # ハッシュタグ行の先頭に半角スペースを1つ入れる
+    lines = output_text.split("\n")
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip().startswith("#"):
+            if not lines[i].startswith(" "):
+                lines[i] = " " + lines[i]
+            break
+    output_text = "\n".join(lines)
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(output_text)
 
