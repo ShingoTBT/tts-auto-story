@@ -1,0 +1,5 @@
+[コーヒー] status=502 body={"error":"upstream request failed"}
+
+[引越し手伝いのお礼問題] status=502 body={"error":"upstream request failed"}
+
+[引越し] status=502 body={"error":"upstream request failed"}
