@@ -1,0 +1,37 @@
+name: dry_run_comment_check
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Dry run check
+        env:
+          ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
+          ZERNIO_THREADS_ACCOUNT_ID: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID }}
+          ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}
+          RAKUTEN_PROXY_SECRET: ${{ secrets.RAKUTEN_PROXY_SECRET }}
+        run: python dry_run_check_comments.py accounts/account3_threads.yaml accounts/account4_threads_engagement.yaml > diagnostics/dry_run_result.txt 2>&1
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: dry run comment check result"
+            git pull --rebase origin main
+            git push
+          fi
