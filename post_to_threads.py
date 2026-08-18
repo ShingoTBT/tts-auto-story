@@ -68,10 +68,10 @@ def main():
     # postIdを抽出して記録(コメント自動チェック用)
     post_id = None
     try:
-        platform_results = result.get("post", {}).get("platformResults", []) or result.get("platformResults", [])
-        for pr in platform_results:
-            if pr.get("platform") == "threads":
-                post_id = pr.get("postId") or pr.get("id")
+        platforms = result.get("post", {}).get("platforms", [])
+        for p in platforms:
+            if p.get("platform") == "threads":
+                post_id = p.get("platformPostId")
     except Exception as e:
         print("postId抽出時に問題がありました:", e)
 
