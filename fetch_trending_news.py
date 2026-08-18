@@ -86,6 +86,17 @@ def extract_article_text(url: str) -> str:
         return ""
 
 
+def is_relevant(keyword: str, article_text: str) -> bool:
+    """
+    抽出した記事本文が、トレンドキーワードと無関係な断片でないかの簡易チェック。
+    キーワードを空白等で分割し、そのいずれかが本文に含まれているかを確認する。
+    """
+    parts = [p for p in keyword.replace("対", " ").replace("vs", " ").split() if len(p) >= 2]
+    if not parts:
+        parts = [keyword]
+    return any(p in article_text for p in parts)
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python fetch_trending_news.py <account_config.yaml>")
@@ -111,22 +122,27 @@ def main():
         char_count = len(article_text)
         print(f"  記事文字数: {char_count}")
 
-        if char_count >= MIN_ARTICLE_CHARS:
-            result = {
-                "keyword": keyword,
-                "article_url": news_item["url"],
-                "article_source": news_item["source"],
-                "article_text": article_text[:3000],  # 長すぎる場合は先頭3000字まで
-            }
-            output_dir = Path(config["output_dir"])
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = output_dir / "trend_candidate.json"
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
-            print(f"採用: {keyword} -> {output_path}")
-            return
+        if char_count < MIN_ARTICLE_CHARS:
+            print("  文字数不足のためスキップ")
+            continue
 
-        print("  文字数不足のためスキップ")
+        if not is_relevant(keyword, article_text):
+            print("  抽出内容がキーワードと無関係(記事抽出の失敗)の可能性が高いためスキップ")
+            continue
+
+        result = {
+            "keyword": keyword,
+            "article_url": news_item["url"],
+            "article_source": news_item["source"],
+            "article_text": article_text[:3000],  # 長すぎる場合は先頭3000字まで
+        }
+        output_dir = Path(config["output_dir"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "trend_candidate.json"
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        print(f"採用: {keyword} -> {output_path}")
+        return
 
     print("十分な文字数の候補が見つかりませんでした。今回の生成は見送ります。")
 
