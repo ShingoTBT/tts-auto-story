@@ -162,19 +162,23 @@ def process_account(config_path: str):
         if count <= threshold:
             continue
 
-        # 元投稿本文を読み込み、商品検索キーワードを抽出
-        text_file = record.get("text_file")
-        if not text_file or not Path(text_file).exists():
-            print(f"元テキストファイルが見つかりません: {text_file}")
-            continue
-        post_text = Path(text_file).read_text(encoding="utf-8")
+        try:
+            # 元投稿本文を読み込み、商品検索キーワードを抽出
+            text_file = record.get("text_file")
+            if not text_file or not Path(text_file).exists():
+                print(f"元テキストファイルが見つかりません: {text_file}")
+                continue
+            post_text = Path(text_file).read_text(encoding="utf-8")
 
-        keyword = extract_topic_keyword(post_text, config["model"])
-        print(f"商品検索キーワード: {keyword}")
+            keyword = extract_topic_keyword(post_text, config["model"])
+            print(f"商品検索キーワード: {keyword}")
 
-        product = search_product(keyword)
-        if not product:
-            print("関連商品が見つからなかったため、今回はコメントをスキップします")
+            product = search_product(keyword)
+            if not product:
+                print("関連商品が見つからなかったため、今回はコメントをスキップします")
+                continue
+        except Exception as e:
+            print(f"商品検索処理でエラー (post_id={post_id}): {e} — この投稿はスキップして次に進みます")
             continue
 
         comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"

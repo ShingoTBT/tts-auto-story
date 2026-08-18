@@ -60,23 +60,26 @@ def main():
 
             if count > threshold and not already_commented:
                 over_threshold_count += 1
-                text_file = record.get("text_file")
-                if not text_file or not Path(text_file).exists():
-                    print("    (元テキストファイルが見つからず、コメント候補を生成できません)")
-                    continue
-                post_text = Path(text_file).read_text(encoding="utf-8")
+                try:
+                    text_file = record.get("text_file")
+                    if not text_file or not Path(text_file).exists():
+                        print("    (元テキストファイルが見つからず、コメント候補を生成できません)")
+                        continue
+                    post_text = Path(text_file).read_text(encoding="utf-8")
 
-                keyword = extract_topic_keyword(post_text, config["model"])
-                product = search_product(keyword)
+                    keyword = extract_topic_keyword(post_text, config["model"])
+                    product = search_product(keyword)
 
-                print(f"    投稿本文冒頭: {post_text[:60].strip()}...")
-                print(f"    抽出キーワード: {keyword}")
-                if product:
-                    comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
-                    print(f"    商品: {product['name'][:40]}")
-                    print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
-                else:
-                    print("    関連商品が見つからず、コメントはスキップされる見込み")
+                    print(f"    投稿本文冒頭: {post_text[:60].strip()}...")
+                    print(f"    抽出キーワード: {keyword}")
+                    if product:
+                        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
+                        print(f"    商品: {product['name'][:40]}")
+                        print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
+                    else:
+                        print("    関連商品が見つからず、コメントはスキップされる見込み")
+                except Exception as e:
+                    print(f"    [エラー] 商品検索処理で失敗: {e}")
 
         print(f"\n  → {config_path}: しきい値超え・未対応の投稿は {over_threshold_count} 件")
 
