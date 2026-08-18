@@ -54,26 +54,30 @@ def is_within_check_window(posted_at_str: str, days: int) -> bool:
     return (now - posted_at) <= datetime.timedelta(days=days)
 
 
-def get_comment_count(api_key: str, post_id: str) -> int:
+def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
     headers = {"Authorization": f"Bearer {api_key}"}
-    r = requests.get(f"{ZERNIO_API_BASE}/posts/{post_id}/comments", headers=headers, timeout=20)
+    r = requests.get(
+        f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
+        headers=headers,
+        params={"accountId": account_id},
+        timeout=20,
+    )
     r.raise_for_status()
     data = r.json()
     comments = data.get("comments", data.get("data", []))
     return len(comments)
 
 
-def post_reply_comment(api_key: str, post_id: str, text: str) -> dict:
+def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -> dict:
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     payload = {
-        "content": text,
-        # プレビューカードを抑制する試み(Threads側で効かない可能性あり、要検証)
-        "platformSpecificData": {"unfurlLinks": False},
+        "accountId": account_id,
+        "message": text,
     }
-    r = requests.post(f"{ZERNIO_API_BASE}/posts/{post_id}/comments", headers=headers, json=payload, timeout=20)
+    r = requests.post(f"{ZERNIO_API_BASE}/inbox/comments/{post_id}", headers=headers, json=payload, timeout=20)
     r.raise_for_status()
     return r.json()
 
@@ -122,6 +126,7 @@ def main():
 def process_account(config_path: str):
     config = load_account_config(config_path)
     api_key = os.environ[config.get("zernio_api_key_env", "ZERNIO_API_KEY")]
+    account_id = os.environ[config["zernio_account_id_env"]]
     threshold = config.get("comment_threshold", 20)
     check_days = config.get("comment_check_days", 2)
 
@@ -141,7 +146,7 @@ def process_account(config_path: str):
         post_id = record["post_id"]
 
         try:
-            count = get_comment_count(api_key, post_id)
+            count = get_comment_count(api_key, post_id, account_id)
         except Exception as e:
             print(f"コメント数取得エラー (post_id={post_id}): {e}")
             continue
@@ -169,7 +174,7 @@ def process_account(config_path: str):
         comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
 
         try:
-            post_reply_comment(api_key, post_id, comment_text)
+            post_reply_comment(api_key, post_id, account_id, comment_text)
             print(f"コメント投稿完了 (post_id={post_id})")
             record["commented"] = True
             updated = True
