@@ -111,10 +111,16 @@ def send_chatwork_notification(text: str) -> None:
 
 def main():
     if len(sys.argv) < 2:
-        print("使い方: python check_and_reply_comments.py <account_config.yaml>")
+        print("使い方: python check_and_reply_comments.py <account_config1.yaml> [account_config2.yaml ...]")
         sys.exit(1)
 
-    config = load_account_config(sys.argv[1])
+    for config_path in sys.argv[1:]:
+        print(f"=== {config_path} ===")
+        process_account(config_path)
+
+
+def process_account(config_path: str):
+    config = load_account_config(config_path)
     api_key = os.environ[config.get("zernio_api_key_env", "ZERNIO_API_KEY")]
     threshold = config.get("comment_threshold", 20)
     check_days = config.get("comment_check_days", 2)

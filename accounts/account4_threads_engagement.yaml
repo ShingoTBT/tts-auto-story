@@ -1,0 +1,15 @@
+account_name: "account4_threads_engagement"
+display_name: "共感/議論系投稿_アカウント4"
+chatwork_label: "共感/議論系投稿_アカウント4(Threads)"
+threads_url: "https://www.threads.com/@xxxxx"  # 接続後に差し替え
+prompt_file: "prompts/threads_engagement_v1.md"
+titles_log_file: "logs/account4_threads_titles.jsonl"
+output_dir: "outputs/account4_threads"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+min_chars: 200
+max_chars: 300
+zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT3"  # account3と同じZernioアカウント(2アカウント目=無料枠)
+zernio_account_id_env: "ZERNIO_THREADS_ACCOUNT_ID_2"
+comment_threshold: 20
+comment_check_days: 2
