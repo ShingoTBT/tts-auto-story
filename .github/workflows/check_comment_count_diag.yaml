@@ -6,6 +6,9 @@ on:
       post_id:
         description: 'post_id to check'
         required: true
+      internal_id:
+        description: 'Zernio internal _id to also try (optional)'
+        required: false
 
 jobs:
   check:
@@ -23,6 +26,7 @@ jobs:
         env:
           ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
           ZERNIO_THREADS_ACCOUNT_ID: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID }}
+          ZERNIO_INTERNAL_ID: ${{ github.event.inputs.internal_id }}
         run: python diagnostics/check_comment_count.py "${{ github.event.inputs.post_id }}"
       - name: Commit result
         run: |
