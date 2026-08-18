@@ -166,7 +166,7 @@ def process_account(config_path: str):
             print("関連商品が見つからなかったため、今回はコメントをスキップします")
             continue
 
-        comment_text = f"{keyword}といえば、やっぱりこれだよね！pr\n　↓\n{product['url']}"
+        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
 
         try:
             post_reply_comment(api_key, post_id, comment_text)
