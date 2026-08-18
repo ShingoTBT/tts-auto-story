@@ -1,0 +1,33 @@
+name: check_rakuten_proxy_diag
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install requests
+      - name: Check Rakuten proxy
+        env:
+          RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}
+          RAKUTEN_PROXY_SECRET: ${{ secrets.RAKUTEN_PROXY_SECRET }}
+        run: python diagnostics/check_rakuten_proxy.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: rakuten proxy diag result"
+            git pull --rebase origin main
+            git push
+          fi
