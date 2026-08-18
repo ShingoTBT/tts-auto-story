@@ -1,0 +1,19 @@
+account_name: "account5_tiktok_engagement"
+display_name: "共感/議論系投稿_アカウント5(TikTok)"
+chatwork_label: "共感/議論系投稿_アカウント5(TikTok)"
+tiktok_url: "https://tiktok.com/@xxxxx"  # 接続後に差し替え
+prompt_file: "prompts/tiktok_engagement_v1.md"
+titles_log_file: "logs/account5_tiktok_titles.jsonl"
+output_dir: "outputs/account5_tiktok"
+schedule_jst:
+  - "01:00"
+  - "06:00"
+  - "11:00"
+  - "16:00"
+  - "21:00"
+image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+image_count: 1
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT5"  # 接続後に確定
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_3"

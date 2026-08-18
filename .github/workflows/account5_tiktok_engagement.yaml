@@ -1,0 +1,92 @@
+name: account5_tiktok_engagement
+
+on:
+  schedule:
+    # 01:00 JST = 前日16:00 UTC
+    - cron: "0 16 * * *"
+    # 06:00 JST = 前日21:00 UTC
+    - cron: "0 21 * * *"
+    # 11:00 JST = 02:00 UTC
+    - cron: "0 2 * * *"
+    # 16:00 JST = 07:00 UTC
+    - cron: "0 7 * * *"
+    # 21:00 JST = 12:00 UTC
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browser
+        run: playwright install --with-deps chromium
+
+      - name: Install Japanese fonts and configure aliases
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
+          sudo mkdir -p /etc/fonts/conf.d
+          sudo cp fontconfig/local.conf /etc/fonts/local.conf
+          sudo fc-cache -f
+
+      - name: Generate post
+        id: generate
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python generate_tiktok_engagement.py accounts/account5_tiktok_engagement.yaml
+
+      - name: Render image via existing tool
+        if: steps.generate.outcome == 'success'
+        run: python render_images.py accounts/account5_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+
+      - name: Commit and push generated content (image must be public before posting)
+        if: steps.generate.outcome == 'success'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/ outputs/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: account5 tiktok post ($(date +'%Y-%m-%d %H:%M'))"
+            git pull --rebase origin main
+            git push
+          fi
+
+      - name: Post to TikTok via Zernio
+        id: post_tiktok
+        if: steps.generate.outcome == 'success'
+        continue-on-error: true
+        env:
+          ZERNIO_API_KEY_ACCOUNT5: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
+        run: python post_to_tiktok.py accounts/account5_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+
+      - name: Notify ChatWork
+        if: steps.generate.outcome == 'success'
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+        run: python notify_chatwork.py accounts/account5_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+
+      - name: Commit any remaining changes (e.g. error debug files)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/ outputs/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))"
+            git pull --rebase origin main
+            git push
+          fi

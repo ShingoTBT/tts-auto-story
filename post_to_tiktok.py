@@ -84,7 +84,8 @@ def main():
     source_text_path = Path(sys.argv[2])
 
     config = load_account_config(config_path)
-    api_key = os.environ["ZERNIO_API_KEY"]
+    api_key_env = config.get("zernio_api_key_env", "ZERNIO_API_KEY")
+    api_key = os.environ[api_key_env]
     account_id_env = config.get("zernio_account_id_env", "ZERNIO_TIKTOK_ACCOUNT_ID")
     account_id = os.environ[account_id_env]
 
@@ -92,7 +93,8 @@ def main():
     title, hashtags = extract_title_and_hashtags(source_text)
 
     file_prefix = source_text_path.stem
-    image_urls = build_public_image_urls(config, file_prefix, count=3)
+    image_count = config.get("image_count", 3)
+    image_urls = build_public_image_urls(config, file_prefix, count=image_count)
 
     print("投稿する画像URL:")
     for u in image_urls:
