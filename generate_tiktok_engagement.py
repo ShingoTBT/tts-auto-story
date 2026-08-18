@@ -124,6 +124,18 @@ def main():
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = output_dir / f"{timestamp}.txt"
 
+    # ハッシュタグ行とタイトル再掲行の間に空白行があると、画像化ツール側で
+    # タイトル再掲を正しく除去できないため、直後に詰める
+    lines = output_text.split("\n")
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip().startswith("#"):
+            # このハッシュタグ行の後ろにある空行を削除する
+            j = i + 1
+            while j < len(lines) and lines[j].strip() == "":
+                del lines[j]
+            break
+    output_text = "\n".join(lines)
+
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(output_text)
 
