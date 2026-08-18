@@ -23,6 +23,7 @@ from generate import (
     load_system_prompt,
     validate_output_format,
     extract_title,
+    strip_meta_commentary,
 )
 
 
@@ -95,6 +96,7 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        output_text = strip_meta_commentary(output_text)
         # タイトル行に誤って角括弧が含まれた場合の安全策として除去
         lines = output_text.split("\n")
         if lines:

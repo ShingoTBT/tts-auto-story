@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import load_recent_titles, append_title_log, load_system_prompt
+from generate import load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
 
 
 def enforce_period_linebreaks(text: str) -> str:
@@ -95,6 +95,7 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        output_text = strip_meta_commentary(output_text)
         output_text = enforce_period_linebreaks(output_text)
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:

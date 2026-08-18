@@ -26,6 +26,36 @@ def load_account_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
+def strip_meta_commentary(text: str) -> str:
+    """
+    AIが誤って出力に混入させがちな、自己チェック・メタ情報を除去する安全策。
+    - [info]...[/info] のようなブロック
+    - "文字数確認" を含む行
+    - チェックマーク(✅)を含む行
+    - "---" のみの区切り線
+    """
+    # [xxx]...[/xxx] 形式のブロックを除去(info/note/check等、名前を問わず)
+    text = re.sub(r"\[(\w+)\][\s\S]*?\[/\1\]", "", text, flags=re.IGNORECASE)
+
+    lines = text.split("\n")
+    cleaned = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            cleaned.append(line)
+            continue
+        if "文字数確認" in stripped or "✅" in stripped or "❌" in stripped:
+            continue
+        if re.fullmatch(r"-{2,}", stripped):
+            continue
+        cleaned.append(line)
+
+    result = "\n".join(cleaned)
+    # 除去した結果できた3連続以上の空行を整理
+    result = re.sub(r"\n{3,}", "\n\n", result)
+    return result.strip()
+
+
 def load_recent_titles(titles_log_path: str, count: int) -> list[str]:
     path = Path(titles_log_path)
     if not path.exists():
@@ -143,6 +173,7 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        output_text = strip_meta_commentary(output_text)
         is_valid, message = validate_output_format(output_text)
 
         if is_valid:
