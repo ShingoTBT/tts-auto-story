@@ -1,5 +1,5 @@
 [platformPostId=18107484238871667] status: 400
 body: {"error":"HTTP error! status: 400 - Unsupported get request. Object with ID '18107484238871667' does not exist, cannot be loaded due to missing permissions, or does not support this operation","type":"platform_error","code":"platform_api_error","platform":"threads"}
 
-[zernio_internal_id=6a84cb576b9782a240c220ee] status: 404
-body: {"error":"Post 6a84cb576b9782a240c220ee not found. Use a valid Zernio post ID or the platform's native post ID.","type":"not_found","code":"post_not_found"}
+[zernio_internal_id=6a84cb576b9782a240c220ed] status: 400
+body: {"error":"HTTP error! status: 400 - Unsupported get request. Object with ID '18107484238871667' does not exist, cannot be loaded due to missing permissions, or does not support this operation","type":"platform_error","code":"platform_api_error","platform":"threads"}
