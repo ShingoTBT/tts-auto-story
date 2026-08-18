@@ -1,7 +1,7 @@
 account_name: "account4_threads_engagement"
 display_name: "共感/議論系投稿_アカウント4"
 chatwork_label: "共感/議論系投稿_アカウント4(Threads)"
-threads_url: "https://www.threads.com/@xxxxx"  # 接続後に差し替え
+threads_url: "https://www.threads.com/@kusetsuyo.qa"
 prompt_file: "prompts/threads_engagement_v1.md"
 titles_log_file: "logs/account4_threads_titles.jsonl"
 output_dir: "outputs/account4_threads"
