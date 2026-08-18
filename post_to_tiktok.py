@@ -85,7 +85,8 @@ def main():
 
     config = load_account_config(config_path)
     api_key = os.environ["ZERNIO_API_KEY"]
-    account_id = os.environ["ZERNIO_TIKTOK_ACCOUNT_ID"]
+    account_id_env = config.get("zernio_account_id_env", "ZERNIO_TIKTOK_ACCOUNT_ID")
+    account_id = os.environ[account_id_env]
 
     source_text = source_text_path.read_text(encoding="utf-8")
     title, hashtags = extract_title_and_hashtags(source_text)

@@ -1,0 +1,18 @@
+account_name: "account2_news"
+display_name: "話題のニュース_アカウント2"
+chatwork_label: "話題のニュース_アカウント2"
+tiktok_url: "https://tiktok.com/@xxxxx"  # TikTokアカウント作成後、実際のURLに差し替え
+prompt_file: "prompts/news_v1.md"
+titles_log_file: "logs/account2_news_titles.jsonl"
+output_dir: "outputs/account2_news"
+notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
+schedule_jst:
+  - "01:00"
+  - "06:00"
+  - "11:00"
+  - "16:00"
+  - "21:00"
+image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"  # TikTok連携後にSecrets登録

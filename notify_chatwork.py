@@ -66,21 +66,18 @@ def main():
 
     title = source_text.split("\n", 1)[0].strip()
 
-    images_dir = Path(config["output_dir"]) / "images"
-    file_prefix = source_text_path.stem
-    image_paths = sorted(images_dir.glob(f"{file_prefix}_0*.png"))
-    caption_path = images_dir / f"{file_prefix}_caption.txt"
-    caption_text = ""
-    if caption_path.exists():
-        caption_text = caption_path.read_text(encoding="utf-8")
-
     display_name = config.get("display_name", config["account_name"])
+    chatwork_label = config.get("chatwork_label", display_name)
+    tiktok_url = config.get("tiktok_url", "")
 
-    # 1. 投稿完了報告(テキスト文のみ・画像添付なし)
-    message_body = source_text
+    # 1. 投稿完了報告(指定テンプレート)
+    message_body = (
+        f"[info]投稿通知：{chatwork_label}\n"
+        f"{tiktok_url}[hr]{source_text}[/info]"
+    )
     send_message(token, room_id, message_body)
 
-    print("ChatWorkにテキストのみ通知しました")
+    print("ChatWorkに通知しました")
 
 
 if __name__ == "__main__":

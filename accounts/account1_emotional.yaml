@@ -1,5 +1,7 @@
 account_name: "account1_emotional"
 display_name: "感動ストーリー(既存アカウント)"
+chatwork_label: "涙あふれるストーリー_アカウント1"
+tiktok_url: "https://tiktok.com/@user2804137174301"
 prompt_file: "prompts/emotional_story_v3.md"
 titles_log_file: "logs/account1_emotional_titles.jsonl"
 output_dir: "outputs/account1_emotional"
@@ -12,3 +14,4 @@ schedule_jst:
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 model: "claude-sonnet-4-6"
 recent_titles_count: 30
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID"
