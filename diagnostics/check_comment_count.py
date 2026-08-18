@@ -10,5 +10,8 @@ post_id = sys.argv[1]
 
 headers = {"Authorization": f"Bearer {api_key}"}
 r = requests.get(f"{ZERNIO_API_BASE}/posts/{post_id}/comments", headers=headers, timeout=20)
-print("status:", r.status_code)
-print("body:", r.text[:2000])
+result = f"status: {r.status_code}\nbody: {r.text[:2000]}"
+print(result)
+
+with open("diagnostics/comment_count_result.txt", "w", encoding="utf-8") as f:
+    f.write(result)
