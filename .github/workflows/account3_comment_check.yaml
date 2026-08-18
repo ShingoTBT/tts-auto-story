@@ -35,5 +35,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add outputs/
-          git diff --staged --quiet || git commit -m "chore: comment check update ($(date +'%Y-%m-%d %H:%M'))"
-          git diff --staged --quiet || git push || (git pull --rebase && git push)
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: comment check update ($(date +'%Y-%m-%d %H:%M'))"
+            git pull --rebase origin main
+            git push
+          fi
