@@ -87,15 +87,21 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
-        max_tokens=100,
+        max_tokens=30,
         system=(
-            "与えられた文章の主題を表す、商品検索に使える短い日本語キーワード(1〜3語程度)"
-            "だけを出力してください。説明や記号は一切不要です。"
+            "与えられた文章の主題を表す、商品検索に使える短い日本語キーワードだけを出力してください。"
+            "出力は10文字以内の単語または短いフレーズ1つのみ。"
+            "説明・記号・Markdown記法・改行を一切含めないこと。"
         ),
-        messages=[{"role": "user", "content": post_text}],
+        messages=[{"role": "user", "content": post_text[:500]}],
     )
     parts = [b.text for b in response.content if b.type == "text"]
-    return "".join(parts).strip()
+    keyword = "".join(parts).strip()
+    # 安全策: 万一長い出力が返ってきても、先頭部分だけに切り詰める
+    keyword = keyword.split("\n")[0].strip()
+    if len(keyword) > 20:
+        keyword = keyword[:20]
+    return keyword
 
 
 def send_chatwork_notification(text: str) -> None:
