@@ -13,6 +13,8 @@ schedule_jst:
   - "21:00"
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 image_count: 1
+min_chars: 200
+max_chars: 260
 model: "claude-sonnet-4-6"
 recent_titles_count: 30
 zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT5"  # 接続後に確定

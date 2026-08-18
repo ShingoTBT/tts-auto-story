@@ -94,6 +94,13 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        # コードフェンス(```)で囲まれてしまった場合の除去
+        output_text = output_text.strip()
+        if output_text.startswith("```"):
+            output_text = re.sub(r"^```[a-zA-Z]*\n?", "", output_text)
+            output_text = re.sub(r"\n?```$", "", output_text)
+            output_text = output_text.strip()
+
         lines = output_text.split("\n")
         if lines:
             lines[0] = lines[0].replace("[", "").replace("]", "")
