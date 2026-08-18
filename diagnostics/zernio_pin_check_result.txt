@@ -1,0 +1,9 @@
+https://zernio.com/api/v1/openapi.json -> status 404, content-type: text/html; charset=utf-8
+https://docs.zernio.com/openapi.json -> status 200, content-type: text/html; charset=utf-8
+https://zernio.com/openapi.json -> status 404, content-type: text/html; charset=utf-8
+
+https://docs.zernio.com/platforms/threads -> status 200
+  'pin'の記述を発見: ing content across 15+ platforms including Twitter, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business, Telegram, Snapchat, WhatsApp, Discord.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free tier available"},"featureL
+
+https://docs.zernio.com/comments -> status 200
+  'pin'の記述を発見: ing content across 15+ platforms including Twitter, Instagram, Facebook, LinkedIn, TikTok, YouTube, Pinterest, Reddit, Bluesky, Threads, Google Business, Telegram, Snapchat, WhatsApp, Discord.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Free tier available"},"featureL
