@@ -129,6 +129,17 @@ def main():
         print("  文字数不足のためスキップ")
 
     print("十分な文字数の候補が見つかりませんでした。今回の生成は見送ります。")
+
+    # デバッグ用に、確認した候補一覧を記録しておく
+    output_dir = Path(config["output_dir"])
+    output_dir.mkdir(parents=True, exist_ok=True)
+    debug_path = output_dir / "no_candidate_found.txt"
+    with open(debug_path, "w", encoding="utf-8") as f:
+        f.write(f"確認日時: {__import__('datetime').datetime.now().isoformat()}\n\n")
+        for item in trend_items[:MAX_CANDIDATES_TO_CHECK]:
+            f.write(f"- {item['keyword']} (急上昇度:{item['traffic']}+) -> {item['news_items'][0]['url']}\n")
+    print(f"デバッグファイル: {debug_path}")
+
     sys.exit(1)
 
 
