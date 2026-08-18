@@ -16,18 +16,23 @@
 
 =========== accounts/account4_threads_engagement.yaml ===========
   post_id=18111231778995672 | コメント数=13 | 未達
-  post_id=17945515482055435 | コメント数=174 | ★対象
-    [エラー] 商品検索処理で失敗: 401 Client Error: Unauthorized for url: https://alley-oop.co.jp/tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%E5%BC%95%E8%B6%8A%E3%81%97%E6%89%8B%E4%BC%9D%E3%81%84%E3%81%AE%E3%81%8A%E7%A4%BC%E5%95%8F%E9%A1%8C
+  post_id=17945515482055435 | コメント数=175 | ★対象
+    投稿本文冒頭: 友人の引越し手伝いを頼まれて、朝から夕方まで丸一日かけて作業したんですが😅
+お礼が「ありがとう、またよろしく」の一言だけ...
+    抽出キーワード: 引越し手伝いお礼なし
+    関連商品が見つからず、コメントはスキップされる見込み
   post_id=18083295794690843 | コメント数=5 | 未達
   post_id=18483011950111818 | コメント数=11 | 未達
   post_id=18123528826878910 | コメント数=1 | 未達
   post_id=17908738821461854 | コメント数=13 | 未達
   post_id=18118752514694616 | コメント数=16 | 未達
-  post_id=18104218385617621 | コメント数=49 | ★対象
-    [エラー] 商品検索処理で失敗: 401 Client Error: Unauthorized for url: https://alley-oop.co.jp/tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%E8%AA%95%E7%94%9F%E6%97%A5%E3%83%97%E3%83%AC%E3%82%BC%E3%83%B3%E3%83%88
-  post_id=18099628091198343 | コメント数=54 | ★対象
-    [エラー] 商品検索処理で失敗: 401 Client Error: Unauthorized for url: https://alley-oop.co.jp/tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%23%23+%E6%AC%A0%E5%B8%AD%E3%81%A7%E5%85%A8%E7%84%B6%E3%81%84%E3%81%84%E3%81%A8%E6%80%9D%E3%81%84%E3%81%BE%E3%81%99
-  post_id=18426528172180919 | コメント数=10 | 未達
-  post_id=17970433503131767 | コメント数=3 | 未達
+  [エラー] post_id=18104218385617621: HTTPSConnectionPool(host='zernio.com', port=443): Read timed out. (read timeout=20)
+  post_id=18099628091198343 | コメント数=56 | ★対象
+    投稿本文冒頭: 友人の結婚式、欠席したいと伝えたら「非常識」と責められました😅
+遠方で交通費だけで3万円以上かかるし、ご祝儀と合わせると...
+    抽出キーワード: ## 正直に言うと、欠席で全然いいと思い
+    関連商品が見つからず、コメントはスキップされる見込み
+  post_id=18426528172180919 | コメント数=11 | 未達
+  post_id=17970433503131767 | コメント数=4 | 未達
 
-  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 3 件
+  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 2 件
