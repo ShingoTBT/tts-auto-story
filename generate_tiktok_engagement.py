@@ -51,8 +51,8 @@ def validate_output(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
     if not lines or not lines[0].strip():
         return False, "1行目のタイトルが空です"
 
-    if re.search(r"^\s*={2,}\s*$", text, re.MULTILINE):
-        return False, "区切り線(=====)が含まれています(1画像用なので不要)"
+    if not re.search(r"^\s*={2,}\s*$", text, re.MULTILINE):
+        return False, "区切り線(=====)が見つかりません(2ブロック構成には1つ必要です)"
 
     hashtag_lines = [l for l in lines if l.strip().startswith("#")]
     if not hashtag_lines:
