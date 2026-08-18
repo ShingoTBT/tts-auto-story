@@ -20,3 +20,11 @@ jobs:
         env:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
         run: python diagnostics/check_zernio_pin_api.py
+
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/
+          git diff --staged --quiet || git commit -m "chore: zernio pin API check result"
+          git push
