@@ -67,6 +67,17 @@ def validate_length(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
     return True, "OK"
 
 
+def validate_hashtag_count(text: str) -> tuple[bool, str]:
+    lines = [l for l in text.split("\n") if l.strip().startswith("#")]
+    if not lines:
+        return False, "ハッシュタグ行が見つかりません"
+    import re
+    tag_count = len(re.findall(r"#\S+", lines[-1]))
+    if tag_count != 3:
+        return False, f"ハッシュタグ数が{tag_count}個です(3個である必要があります)"
+    return True, "OK"
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python generate_threads_post.py <account_config.yaml>")
@@ -90,7 +101,11 @@ def main():
         output_text = call_claude(system_prompt, user_message, config["model"])
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:
-            break
+            is_valid_tags, tag_msg = validate_hashtag_count(output_text)
+            if is_valid_tags:
+                break
+            msg = tag_msg
+            is_valid = False
         print(f"[試行{attempt}] {msg}")
         if attempt == max_retries:
             debug_dir = Path(config["output_dir"])

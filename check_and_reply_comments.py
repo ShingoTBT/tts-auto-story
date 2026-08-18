@@ -94,6 +94,21 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
     return "".join(parts).strip()
 
 
+def send_chatwork_notification(text: str) -> None:
+    token = os.environ.get("CHATWORK_API_TOKEN")
+    room_id = os.environ.get("CHATWORK_ROOM_ID")
+    if not token or not room_id:
+        print("ChatWork認証情報が見つからないため、通知をスキップします")
+        return
+    r = requests.post(
+        f"https://api.chatwork.com/v2/rooms/{room_id}/messages",
+        headers={"X-ChatWorkToken": token},
+        data={"body": text},
+        timeout=15,
+    )
+    r.raise_for_status()
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python check_and_reply_comments.py <account_config.yaml>")
@@ -152,6 +167,18 @@ def main():
             print(f"コメント投稿完了 (post_id={post_id})")
             record["commented"] = True
             updated = True
+
+            chatwork_label = config.get("chatwork_label", config["account_name"])
+            notify_text = (
+                f"[info]コメント自動投稿：{chatwork_label}\n"
+                f"コメント数が{threshold}件を超えたため、商品リンク付きコメントを投稿しました。[hr]"
+                f"対象投稿:\n{post_text}\n\n"
+                f"投稿したコメント:\n{comment_text}[/info]"
+            )
+            try:
+                send_chatwork_notification(notify_text)
+            except Exception as e:
+                print(f"ChatWork通知エラー: {e}")
         except Exception as e:
             print(f"コメント投稿エラー (post_id={post_id}): {e}")
 

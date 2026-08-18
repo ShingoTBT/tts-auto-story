@@ -27,6 +27,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}
           RAKUTEN_PROXY_SECRET: ${{ secrets.RAKUTEN_PROXY_SECRET }}
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: python check_and_reply_comments.py accounts/account3_threads.yaml
 
       - name: Commit updated post log
