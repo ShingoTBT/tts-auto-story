@@ -17,13 +17,71 @@
   post_id=18111231778995672 | コメント数=13 | 未達
   post_id=17945515482055435 | コメント数=25 | ★対象
 Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connection.py", line 204, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 788, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 488, in _make_request
+    raise new_e
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 464, in _make_request
+    self._validate_conn(conn)
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 1106, in _validate_conn
+    conn.connect()
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connection.py", line 759, in connect
+    self.sock = sock = self._new_conn()
+                       ^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connection.py", line 213, in _new_conn
+    raise ConnectTimeoutError(
+urllib3.exceptions.ConnectTimeoutError: (<HTTPSConnection(host='alley-oop.co.jp', port=443) at 0x7f23c50b6930>, 'Connection to alley-oop.co.jp timed out. (connect timeout=20)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/adapters.py", line 696, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/connectionpool.py", line 842, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/urllib3/util/retry.py", line 543, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='alley-oop.co.jp', port=443): Max retries exceeded with url: /tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%E5%BC%95%E8%B6%8A%E3%81%97%E6%89%8B%E4%BC%9D%E3%81%84%E3%81%AE%E3%81%8A%E7%A4%BC (Caused by ConnectTimeoutError(<HTTPSConnection(host='alley-oop.co.jp', port=443) at 0x7f23c50b6930>, 'Connection to alley-oop.co.jp timed out. (connect timeout=20)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
   File "/home/runner/work/tts-auto-story/tts-auto-story/dry_run_check_comments.py", line 85, in <module>
     main()
   File "/home/runner/work/tts-auto-story/tts-auto-story/dry_run_check_comments.py", line 70, in main
     product = search_product(keyword)
               ^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/tts-auto-story/tts-auto-story/rakuten_product_search.py", line 26, in search_product
-    r.raise_for_status()
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 1167, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 502 Server Error: Bad Gateway for url: https://alley-oop.co.jp/tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%E5%BC%95%E8%B6%8A%E3%81%97%E6%89%8B%E4%BC%9D%E3%81%84%E3%81%AE%E3%81%8A%E7%A4%BC%E5%95%8F%E9%A1%8C
+  File "/home/runner/work/tts-auto-story/tts-auto-story/rakuten_product_search.py", line 25, in search_product
+    r = requests.get(proxy_url, params=params, timeout=20)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 87, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 71, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 651, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 784, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/adapters.py", line 717, in send
+    raise ConnectTimeout(e, request=request)
+requests.exceptions.ConnectTimeout: HTTPSConnectionPool(host='alley-oop.co.jp', port=443): Max retries exceeded with url: /tools/rakuten-api-proxy/rakuten-proxy.php?secret=bfb4a75c8621466c07917f5f98e22b3c0aed1afb7f777976&keyword=%E5%BC%95%E8%B6%8A%E3%81%97%E6%89%8B%E4%BC%9D%E3%81%84%E3%81%AE%E3%81%8A%E7%A4%BC (Caused by ConnectTimeoutError(<HTTPSConnection(host='alley-oop.co.jp', port=443) at 0x7f23c50b6930>, 'Connection to alley-oop.co.jp timed out. (connect timeout=20)'))
