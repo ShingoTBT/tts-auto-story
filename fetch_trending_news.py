@@ -97,12 +97,43 @@ def is_relevant(keyword: str, article_text: str) -> bool:
     return any(p in article_text for p in parts)
 
 
+def load_recent_keywords(titles_log_file: str, hours: int = 24) -> set[str]:
+    """直近使用済みのトレンドキーワードを、期間指定で読み込む(重複投稿の機械的ブロック用)"""
+    path = Path(titles_log_file)
+    if not path.exists():
+        return set()
+
+    import datetime
+    cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
+    keywords = set()
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+                generated_at = datetime.datetime.fromisoformat(record["generated_at"])
+                if generated_at >= cutoff:
+                    # "タイトル (キーワード)" 形式にも対応
+                    title = record.get("title", "")
+                    keyword_part = title.split("(")[-1].rstrip(")") if "(" in title else title
+                    keywords.add(keyword_part)
+            except Exception:
+                continue
+    return keywords
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python fetch_trending_news.py <account_config.yaml>")
         sys.exit(1)
 
     config = load_account_config(sys.argv[1])
+
+    recent_keywords = load_recent_keywords(config["titles_log_file"], hours=24)
+    if recent_keywords:
+        print(f"直近24時間で使用済みのキーワード({len(recent_keywords)}件): {recent_keywords}")
 
     print("Googleトレンドを取得中...")
     trend_items = fetch_trend_items()
@@ -112,9 +143,14 @@ def main():
     for item in trend_items:
         if checked >= MAX_CANDIDATES_TO_CHECK:
             break
-        checked += 1
 
         keyword = item["keyword"]
+
+        if keyword in recent_keywords:
+            print(f"[スキップ] {keyword} は直近24時間以内に使用済みです")
+            continue
+
+        checked += 1
         news_item = item["news_items"][0]
         print(f"[候補{checked}] {keyword} (急上昇度:{item['traffic']}+) -> {news_item['url']}")
 
