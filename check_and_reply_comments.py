@@ -56,16 +56,32 @@ def is_within_check_window(posted_at_str: str, days: int) -> bool:
 
 def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
     headers = {"Authorization": f"Bearer {api_key}"}
-    r = requests.get(
-        f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
-        headers=headers,
-        params={"accountId": account_id},
-        timeout=20,
-    )
-    r.raise_for_status()
-    data = r.json()
-    comments = data.get("comments", data.get("data", []))
-    return len(comments)
+    total = 0
+    cursor = None
+
+    while True:
+        params = {"accountId": account_id}
+        if cursor:
+            params["cursor"] = cursor
+
+        r = requests.get(
+            f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
+            headers=headers,
+            params=params,
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        comments = data.get("comments", data.get("data", []))
+        total += len(comments)
+
+        pagination = data.get("pagination", {})
+        if pagination.get("hasMore") and pagination.get("cursor"):
+            cursor = pagination["cursor"]
+        else:
+            break
+
+    return total
 
 
 def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -> dict:
