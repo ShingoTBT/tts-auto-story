@@ -95,6 +95,12 @@ def main():
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
+        # タイトル行に誤って角括弧が含まれた場合の安全策として除去
+        lines = output_text.split("\n")
+        if lines:
+            lines[0] = lines[0].replace("[", "").replace("]", "")
+        output_text = "\n".join(lines)
+
         is_valid, msg = validate_output_format(output_text)
         if is_valid:
             is_valid_tags, tag_msg = validate_hashtag_count(output_text)
