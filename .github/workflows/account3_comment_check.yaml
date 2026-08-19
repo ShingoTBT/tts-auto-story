@@ -24,6 +24,7 @@ jobs:
       - name: Check comments and reply if needed
         env:
           ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
+          ZERNIO_THREADS_ACCOUNT_ID: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID }}
           ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}

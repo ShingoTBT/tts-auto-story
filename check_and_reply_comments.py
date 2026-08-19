@@ -147,7 +147,10 @@ def main():
 
     for config_path in sys.argv[1:]:
         print(f"=== {config_path} ===")
-        process_account(config_path)
+        try:
+            process_account(config_path)
+        except Exception as e:
+            print(f"[エラー] {config_path} の処理全体が失敗しました: {e} — 次のアカウントに進みます")
 
 
 def process_account(config_path: str):
