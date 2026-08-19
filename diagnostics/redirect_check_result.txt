@@ -1,0 +1,2 @@
+[通常ユーザー] status=302, Location=https://item.rakuten.co.jp/
+[facebookexternalhit] status=403, body=preview not available
