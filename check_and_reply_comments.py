@@ -125,6 +125,18 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
     return keyword
 
 
+def build_redirect_url(target_url: str) -> str:
+    """プレビュー抑制用の中継リダイレクトを経由したURLを組み立てる"""
+    import urllib.parse
+    redirect_base = os.environ.get("LINK_REDIRECT_URL")
+    redirect_secret = os.environ.get("LINK_REDIRECT_SECRET")
+    if not redirect_base or not redirect_secret:
+        # 未設定なら元のURLをそのまま返す(フォールバック)
+        return target_url
+    encoded = urllib.parse.quote(target_url, safe="")
+    return f"{redirect_base}?secret={redirect_secret}&url={encoded}"
+
+
 def send_chatwork_notification(text: str) -> None:
     token = os.environ.get("CHATWORK_API_TOKEN")
     room_id = os.environ.get("CHATWORK_ROOM_ID")
@@ -205,7 +217,7 @@ def process_account(config_path: str):
             print(f"商品検索処理でエラー (post_id={post_id}): {e} — この投稿はスキップして次に進みます")
             continue
 
-        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
+        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{build_redirect_url(product['url'])}"
 
         try:
             post_reply_comment(api_key, post_id, account_id, comment_text)

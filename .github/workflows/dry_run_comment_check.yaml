@@ -23,6 +23,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           RAKUTEN_PROXY_URL: ${{ secrets.RAKUTEN_PROXY_URL }}
           RAKUTEN_PROXY_SECRET: ${{ secrets.RAKUTEN_PROXY_SECRET }}
+          LINK_REDIRECT_URL: ${{ secrets.LINK_REDIRECT_URL }}
+          LINK_REDIRECT_SECRET: ${{ secrets.LINK_REDIRECT_SECRET }}
         run: python dry_run_check_comments.py accounts/account3_threads.yaml accounts/account4_threads_engagement.yaml > diagnostics/dry_run_result.txt 2>&1
       - name: Commit result
         if: always()

@@ -19,6 +19,7 @@ from check_and_reply_comments import (
     is_within_check_window,
     get_comment_count,
     extract_topic_keyword,
+    build_redirect_url,
 )
 from rakuten_product_search import search_product
 
@@ -73,7 +74,7 @@ def main():
                     print(f"    投稿本文冒頭: {post_text[:60].strip()}...")
                     print(f"    抽出キーワード: {keyword}")
                     if product:
-                        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{product['url']}"
+                        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{build_redirect_url(product['url'])}"
                         print(f"    商品: {product['name'][:40]}")
                         print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
                     else:
