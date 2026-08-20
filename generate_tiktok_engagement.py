@@ -9,6 +9,7 @@ tiktok_engagement_v1.mdプロンプトで、1画像に収まる共感/議論系�
 import sys
 import os
 import re
+import random
 import datetime
 from pathlib import Path
 
@@ -24,7 +25,17 @@ def load_account_config(config_path: str) -> dict:
 
 
 def build_user_message(recent_titles: list[str]) -> str:
-    base = "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。"
+    # 一定確率(30%)で「30代主婦×家族系の悩み×賛否両論型」の特別パターンを指定する
+    use_special_pattern = random.random() < 0.3
+
+    if use_special_pattern:
+        base = (
+            "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。\n\n"
+            "今回は【2.5 特別パターン：30代主婦×家族系の悩み×賛否両論型】を使って書いてください。"
+        )
+    else:
+        base = "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。"
+
     if recent_titles:
         titles_block = "\n".join(f"- {t}" for t in recent_titles)
         base += (
