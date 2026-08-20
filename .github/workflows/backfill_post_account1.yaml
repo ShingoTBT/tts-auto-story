@@ -1,0 +1,26 @@
+name: backfill_post_account1
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Post to TikTok via Zernio (using already-rendered images)
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
+        run: python post_to_tiktok.py accounts/account1_emotional.yaml outputs/account1_emotional/preview_text.txt
+      - name: Notify ChatWork
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+        run: python notify_chatwork.py accounts/account1_emotional.yaml outputs/account1_emotional/preview_text.txt
