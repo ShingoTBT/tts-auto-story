@@ -225,6 +225,11 @@ def process_account(config_path: str):
             record["commented"] = True
             updated = True
 
+            # 1件成功するたびに、即座にファイルへ保存する(後続の処理で
+            # エラーが起きても、この「済み」記録が失われないようにするため)
+            rewrite_posted_threads(str(log_path), records)
+            print("投稿ログを更新しました(即時保存)")
+
             chatwork_label = config.get("chatwork_label", config["account_name"])
             notify_text = (
                 f"[info]コメント自動投稿：{chatwork_label}\n"
@@ -240,8 +245,7 @@ def process_account(config_path: str):
             print(f"コメント投稿エラー (post_id={post_id}): {e}")
 
     if updated:
-        rewrite_posted_threads(str(log_path), records)
-        print("投稿ログを更新しました")
+        print("このアカウントの処理が完了しました(すでに逐次保存済み)")
 
 
 if __name__ == "__main__":
