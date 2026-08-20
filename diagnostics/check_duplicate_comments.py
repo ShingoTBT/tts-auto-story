@@ -4,7 +4,7 @@ import requests
 ZERNIO_API_BASE = "https://zernio.com/api/v1"
 api_key = os.environ["ZERNIO_API_KEY_ACCOUNT3"]
 account_id = os.environ["ZERNIO_THREADS_ACCOUNT_ID_2"]
-post_id = "18123528826878910"
+post_id = "17884175382616984"
 
 headers = {"Authorization": f"Bearer {api_key}"}
 all_comments = []
@@ -26,7 +26,7 @@ while True:
         break
 
 result_lines = [f"総コメント数: {len(all_comments)}"]
-our_comments = [c for c in all_comments if "ad" in str(c.get("text", "")) or "kinoteck" in str(c.get("text", ""))]
+our_comments = [c for c in all_comments if "ad" in str(c) or "kinoteck" in str(c) or "kinoteck" in str(c.get("text", ""))]
 result_lines.append(f"自分(広告リンク付き)のコメント数: {len(our_comments)}")
 for c in our_comments:
     result_lines.append(f" - id={c.get('id')} | created={c.get('timestamp') or c.get('createdAt')} | text={str(c.get('text'))[:100]}")
