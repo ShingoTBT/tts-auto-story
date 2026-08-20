@@ -79,12 +79,11 @@ def validate_hashtag_count(text: str) -> tuple[bool, str]:
 
 
 def validate_question_ending(text: str) -> tuple[bool, str]:
-    """3番目のブロック(本文最後のブロック)が疑問形(？)で終わっているかを確認する"""
+    """3番目のブロック(本文最後のブロック)が、読者を名指しした疑問形で終わっているかを確認する"""
     blocks = text.split("=====")
     if len(blocks) < 3:
         return False, "3ブロック構成になっていません"
     last_block = blocks[2]
-    # ハッシュタグ行・タイトル再掲行を除いた、本文の実質的な最終行を取り出す
     content_lines = [
         l.strip() for l in last_block.split("\n")
         if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("■")
@@ -92,8 +91,19 @@ def validate_question_ending(text: str) -> tuple[bool, str]:
     if not content_lines:
         return False, "第3ブロックの本文が見つかりません"
     last_line = content_lines[-1]
+
     if "？" not in last_line and "?" not in last_line:
         return False, f"第3ブロックの最後が疑問形(？)で終わっていません: 「{last_line}」"
+
+    # 読者を名指ししているかを確認する(自分完結型の独り言でないか)
+    reader_markers = [
+        "みなさん", "皆さん", "あなたは", "あなたの", "みんなは", "みんなの",
+        "な人", "た人", "する人", "派の人", "経験ある", "見た人", "行った人",
+        "使った人", "知ってる人", "います？", "いますか", "どっち",
+    ]
+    if not any(marker in last_line for marker in reader_markers):
+        return False, f"読者を名指しした疑問文になっていません(自分完結型の独り言の可能性): 「{last_line}」"
+
     return True, "OK"
 
 
