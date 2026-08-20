@@ -12,4 +12,4 @@ max_chars: 300
 zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT3"  # account3と同じZernioアカウント(2アカウント目=無料枠)
 zernio_account_id_env: "ZERNIO_THREADS_ACCOUNT_ID_2"
 comment_threshold: 20
-comment_check_days: 2
+comment_check_days: 4

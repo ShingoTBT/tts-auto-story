@@ -12,4 +12,4 @@ max_chars: 450
 zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT3"
 zernio_account_id_env: "ZERNIO_THREADS_ACCOUNT_ID"
 comment_threshold: 20
-comment_check_days: 2  # 当日・前日分をチェック対象にする
+comment_check_days: 4  # 当日〜3日前までをチェック対象にする
