@@ -26,40 +26,66 @@ def render(image_tool_url: str, source_text: str, output_dir: Path, file_prefix:
     image_paths = []
     copy_text = ""
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page()
-        page.goto(image_tool_url, wait_until="networkidle")
+    last_error = None
+    for attempt in range(1, 3):
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch()
+                page = browser.new_page()
+                page.goto(image_tool_url, wait_until="networkidle", timeout=30000)
 
-        # 本文を入力
-        page.fill("#sourceText", source_text)
+                # 本文を入力
+                page.fill("#sourceText", source_text)
 
-        # 画像を生成するボタンをクリック
-        page.click("#generateBtn")
+                # 画像を生成するボタンをクリック
+                page.click("#generateBtn")
 
-        # 結果カードが表示されるまで待つ
-        page.wait_for_selector("#resultsCard", state="visible", timeout=15000)
+                # 結果カードが表示されるまで待つ(サーバー側が遅い場合に備えて余裕を持たせる)
+                page.wait_for_selector("#resultsCard", state="visible", timeout=30000)
 
-        # 生成された画像(dataURL)をすべて取得
-        img_data_urls = page.eval_on_selector_all(
-            "#imageList .preview-wrap img",
-            "elements => elements.map(el => el.src)"
-        )
+                image_paths, copy_text = _extract_results(page, output_dir, file_prefix)
+                browser.close()
+                return image_paths, copy_text
+        except Exception as e:
+            last_error = e
+            print(f"[試行{attempt}] 画像化に失敗しました: {e}")
+            try:
+                debug_dir = output_dir / "debug"
+                debug_dir.mkdir(parents=True, exist_ok=True)
+                page.screenshot(path=str(debug_dir / f"{file_prefix}_error_attempt{attempt}.png"))
+                with open(debug_dir / f"{file_prefix}_error_attempt{attempt}.html", "w", encoding="utf-8") as f:
+                    f.write(page.content())
+            except Exception as e2:
+                print(f"デバッグ情報の保存にも失敗しました: {e2}")
+            try:
+                browser.close()
+            except Exception:
+                pass
 
-        for i, data_url in enumerate(img_data_urls, start=1):
-            # "data:image/png;base64,xxxxx" からbase64部分を取り出す
-            header, encoded = data_url.split(",", 1)
-            image_bytes = base64.b64decode(encoded)
+    raise last_error
 
-            image_path = output_dir / f"{file_prefix}_{i:02d}.png"
-            with open(image_path, "wb") as f:
-                f.write(image_bytes)
-            image_paths.append(str(image_path))
 
-        # コピー用テキスト(タイトル+ハッシュタグ)も取得
-        copy_text = page.inner_text("#copyTextBox")
+def _extract_results(page, output_dir: Path, file_prefix: str):
+    image_paths = []
 
-        browser.close()
+    # 生成された画像(dataURL)をすべて取得
+    img_data_urls = page.eval_on_selector_all(
+        "#imageList .preview-wrap img",
+        "elements => elements.map(el => el.src)"
+    )
+
+    for i, data_url in enumerate(img_data_urls, start=1):
+        # "data:image/png;base64,xxxxx" からbase64部分を取り出す
+        header, encoded = data_url.split(",", 1)
+        image_bytes = base64.b64decode(encoded)
+
+        image_path = output_dir / f"{file_prefix}_{i:02d}.png"
+        with open(image_path, "wb") as f:
+            f.write(image_bytes)
+        image_paths.append(str(image_path))
+
+    # コピー用テキスト(タイトル+ハッシュタグ)も取得
+    copy_text = page.inner_text("#copyTextBox")
 
     return image_paths, copy_text
 
