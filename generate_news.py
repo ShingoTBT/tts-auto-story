@@ -78,6 +78,37 @@ def validate_hashtag_count(text: str) -> tuple[bool, str]:
     return True, "OK"
 
 
+def validate_question_ending(text: str) -> tuple[bool, str]:
+    """3番目のブロック(本文最後のブロック)が疑問形(？)で終わっているかを確認する"""
+    blocks = text.split("=====")
+    if len(blocks) < 3:
+        return False, "3ブロック構成になっていません"
+    last_block = blocks[2]
+    # ハッシュタグ行・タイトル再掲行を除いた、本文の実質的な最終行を取り出す
+    content_lines = [
+        l.strip() for l in last_block.split("\n")
+        if l.strip() and not l.strip().startswith("#") and not l.strip().startswith("■")
+    ]
+    if not content_lines:
+        return False, "第3ブロックの本文が見つかりません"
+    last_line = content_lines[-1]
+    if "？" not in last_line and "?" not in last_line:
+        return False, f"第3ブロックの最後が疑問形(？)で終わっていません: 「{last_line}」"
+    return True, "OK"
+
+
+def validate_casual_tone(text: str) -> tuple[bool, str]:
+    """カジュアルな口語表現が最低2箇所以上含まれているかを確認する"""
+    casual_markers = [
+        "マジ", "わんちゃん", "って感じ", "だよね", "なんだって",
+        "本当かな", "ガチ", "エグ", "ヤバ", "めちゃくちゃ", "めっちゃ",
+    ]
+    count = sum(text.count(marker) for marker in casual_markers)
+    if count < 2:
+        return False, f"カジュアルな口語表現が{count}箇所しか見つかりません(最低2箇所必要)"
+    return True, "OK"
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python generate_news.py <account_config.yaml>")
@@ -92,7 +123,7 @@ def main():
     )
     user_message = build_user_message(candidate, recent_titles)
 
-    max_retries = 3
+    max_retries = 5
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
@@ -105,11 +136,13 @@ def main():
 
         is_valid, msg = validate_output_format(output_text)
         if is_valid:
-            is_valid_tags, tag_msg = validate_hashtag_count(output_text)
-            if is_valid_tags:
-                break
-            msg = tag_msg
-            is_valid = False
+            is_valid, msg = validate_hashtag_count(output_text)
+        if is_valid:
+            is_valid, msg = validate_question_ending(output_text)
+        if is_valid:
+            is_valid, msg = validate_casual_tone(output_text)
+        if is_valid:
+            break
 
         print(f"[試行{attempt}] フォーマット不正: {msg}")
         if attempt == max_retries:

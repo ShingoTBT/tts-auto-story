@@ -84,6 +84,29 @@ def validate_hashtag_count(text: str) -> tuple[bool, str]:
     return True, "OK"
 
 
+def validate_question_ending(text: str) -> tuple[bool, str]:
+    """ハッシュタグ行を除いた本文の最終行が疑問形(？)で終わっているかを確認する"""
+    lines = [l.strip() for l in text.split("\n") if l.strip() and not l.strip().startswith("#")]
+    if not lines:
+        return False, "本文が見つかりません"
+    last_line = lines[-1]
+    if "？" not in last_line and "?" not in last_line:
+        return False, f"本文の最後が疑問形(？)で終わっていません: 「{last_line}」"
+    return True, "OK"
+
+
+def validate_casual_tone(text: str) -> tuple[bool, str]:
+    """カジュアルな口語表現が最低2箇所以上含まれているかを確認する"""
+    casual_markers = [
+        "マジ", "わんちゃん", "って感じ", "だよね", "なんだって",
+        "本当かな", "ガチ", "エグ", "ヤバ", "めちゃくちゃ", "めっちゃ",
+    ]
+    count = sum(text.count(marker) for marker in casual_markers)
+    if count < 2:
+        return False, f"カジュアルな口語表現が{count}箇所しか見つかりません(最低2箇所必要)"
+    return True, "OK"
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python generate_threads_post.py <account_config.yaml>")
@@ -101,19 +124,23 @@ def main():
     min_chars = config.get("min_chars", 350)
     max_chars = config.get("max_chars", 450)
 
-    max_retries = 5
+    max_retries = 7
     output_text = ""
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
         output_text = enforce_period_linebreaks(output_text)
+
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:
-            is_valid_tags, tag_msg = validate_hashtag_count(output_text)
-            if is_valid_tags:
-                break
-            msg = tag_msg
-            is_valid = False
+            is_valid, msg = validate_hashtag_count(output_text)
+        if is_valid:
+            is_valid, msg = validate_question_ending(output_text)
+        if is_valid:
+            is_valid, msg = validate_casual_tone(output_text)
+        if is_valid:
+            break
+
         print(f"[試行{attempt}] {msg}")
         if attempt == max_retries:
             debug_dir = Path(config["output_dir"])
