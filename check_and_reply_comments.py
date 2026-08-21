@@ -99,7 +99,7 @@ def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -
 
 
 def extract_topic_keyword(post_text: str, model: str) -> str:
-    """投稿本文から、楽天で実際に検索してヒットしそうな商品カテゴリ名をClaudeに考えさせる"""
+    """投稿本文から、楽天で実際に検索してヒットしそうな商品カテゴリ名をClaudeに考えさせる(検索用)"""
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
@@ -123,6 +123,45 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
     if len(keyword) > 20:
         keyword = keyword[:20]
     return keyword
+
+
+def generate_comment_phrase(post_text: str, product_name: str, model: str) -> str:
+    """
+    実際に見つかった商品名と投稿内容から、コメントの1行目(導入文)を丸ごと生成する。
+    「↓↓ad」より上の部分に入る、投稿内容と商品の両方に自然に合った短い一言。
+    """
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=model,
+        max_tokens=60,
+        system=(
+            "あなたはSNSコメントの導入文を考える担当です。\n"
+            "「投稿の内容」と「実際に見つかった商品名」の両方を踏まえて、"
+            "この後に商品リンクを貼る前置きとなる、短く自然な一言を考えてください。\n\n"
+            "ルール：\n"
+            "・投稿の話題に出てくる具体的なモノ・状況を指すこと（一般的なジャンル名だけで終わらせない）\n"
+            "・商品名から連想される特徴（色・グレード等）があれば、それも軽く反映すること\n"
+            "・「〜だよね！」「〜だと、どうなんだろうか？」「商品名＋一言」のように、"
+            "毎回同じ言い回しに固定せず、自然なバリエーションをつけること\n"
+            "・1〜2行、合計25文字程度までの短さにすること\n"
+            "・「ad」「PR」などの広告表記語は含めないこと(別途付与されるため)\n\n"
+            "例：\n"
+            "投稿「義実家の法事に平服で行ったら浮いた」＋商品名「フォーマルワンピース ブラック」\n"
+            "→「この黒い平服だと、どうなんだろうか？」\n\n"
+            "投稿「手作りランチボックスを渡したら困ると言われた」＋商品名「高級ランチボックス 曲げわっぱ」\n"
+            "→「ランチボックス\\n高級なやつ」\n\n"
+            "出力は導入文のみ。説明・記号・Markdown記法は一切含めないこと。"
+        ),
+        messages=[{
+            "role": "user",
+            "content": f"投稿の内容:\n{post_text[:500]}\n\n実際に見つかった商品名:\n{product_name}",
+        }],
+    )
+    parts = [b.text for b in response.content if b.type == "text"]
+    phrase = "".join(parts).strip()
+    if len(phrase) > 60:
+        phrase = phrase[:60]
+    return phrase
 
 
 def build_redirect_url(target_url: str) -> str:
@@ -213,11 +252,14 @@ def process_account(config_path: str):
             if not product:
                 print("関連商品が見つからなかったため、今回はコメントをスキップします")
                 continue
+
+            comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
+            print(f"コメント文言: {comment_phrase}")
         except Exception as e:
             print(f"商品検索処理でエラー (post_id={post_id}): {e} — この投稿はスキップして次に進みます")
             continue
 
-        comment_text = f"{keyword}といえば、やっぱりこれだよね！\n　↓↓ad\n{build_redirect_url(product['url'])}"
+        comment_text = f"{comment_phrase}\n　↓↓ad\n{build_redirect_url(product['url'])}"
 
         try:
             post_reply_comment(api_key, post_id, account_id, comment_text)
