@@ -39,93 +39,140 @@
   post_id=17929141359146073 | コメント数=1 | 未達
   post_id=18065131766749335 | コメント数=0 | 未達
   post_id=18121354675822390 | コメント数=4 | 未達
-  post_id=17875505481548938 | コメント数=5 | 未達
+  post_id=17875505481548938 | コメント数=8 | 未達
   post_id=18141491299603029 | コメント数=0 | 未達
   post_id=17965509939154296 | コメント数=0 | 未達
   post_id=18351220975175237 | コメント数=0 | 未達
   post_id=18109693382079072 | コメント数=0 | 未達
   post_id=18142224361567786 | コメント数=0 | 未達
-  post_id=18431183395183934 | コメント数=2 | 未達
+  post_id=18431183395183934 | コメント数=3 | 未達
   post_id=18080568281691950 | コメント数=0 | 未達
   post_id=17980571543892018 | コメント数=0 | 未達
-  post_id=18011874569945687 | コメント数=5 | 未達
+  post_id=18011874569945687 | コメント数=11 | 未達
   post_id=18105127886586889 | コメント数=0 | 未達
-  post_id=18126330175747107 | コメント数=0 | 未達
-  post_id=18481456654111761 | コメント数=5 | 未達
-  post_id=18061743347601553 | コメント数=0 | 未達
-  post_id=17915014425244917 | コメント数=0 | 未達
-  post_id=17905905780304977 | コメント数=0 | 未達
-  post_id=18165185719459891 | コメント数=0 | 未達
-  post_id=18186505690397795 | コメント数=0 | 未達
-  post_id=18100057418347578 | コメント数=0 | 未達
-  post_id=18077878559701580 | コメント数=0 | 未達
-  post_id=18089698286159813 | コメント数=0 | 未達
-  post_id=17933554995366381 | コメント数=0 | 未達
+  [エラー] post_id=18126330175747107: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18126330175747107?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18481456654111761: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18481456654111761?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18061743347601553: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18061743347601553?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17915014425244917: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17915014425244917?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17905905780304977: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17905905780304977?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18165185719459891: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18165185719459891?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18186505690397795: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18186505690397795?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18100057418347578: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18100057418347578?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18077878559701580: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18077878559701580?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18089698286159813: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18089698286159813?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17933554995366381: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17933554995366381?accountId=6a843e5477555aae01456e57
+  post_id=18216356641341604 | コメント数=0 | 未達
+  [エラー] post_id=18130947025633791: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18130947025633791?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18106165019135550: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18106165019135550?accountId=6a843e5477555aae01456e57
+  post_id=17918631201423318 | コメント数=0 | 未達
+  [エラー] post_id=18136658590592010: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18136658590592010?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18058165136784754: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18058165136784754?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17963236173165437: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17963236173165437?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17948903625260199: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17948903625260199?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18192881809375664: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18192881809375664?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18113895512054076: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18113895512054076?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18108537608035167: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18108537608035167?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18129946474659632: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18129946474659632?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18191118727400656: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18191118727400656?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=17890066260672801: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17890066260672801?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18105917492582413: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18105917492582413?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18092565647451745: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18092565647451745?accountId=6a843e5477555aae01456e57
+  [エラー] post_id=18069991487548480: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18069991487548480?accountId=6a843e5477555aae01456e57
+  post_id=18369146662240322 | コメント数=0 | 未達
 
   → accounts/account3_threads.yaml: しきい値超え・未対応の投稿は 0 件
 
 =========== accounts/account4_threads_engagement.yaml ===========
-  post_id=18111231778995672 | コメント数=14 | 未達
-  post_id=17945515482055435 | コメント数=197 | 対応済み
-  post_id=18083295794690843 | コメント数=8 | 未達
-  post_id=18483011950111818 | コメント数=13 | 未達
-  post_id=18123528826878910 | コメント数=1 | 未達
-  post_id=17908738821461854 | コメント数=14 | 未達
-  post_id=18118752514694616 | コメント数=47 | 対応済み
-  post_id=18104218385617621 | コメント数=59 | 対応済み
-  post_id=18099628091198343 | コメント数=779 | 対応済み
-  post_id=18426528172180919 | コメント数=13 | 未達
-  post_id=17970433503131767 | コメント数=41 | 対応済み
-  post_id=18112535752961809 | コメント数=130 | 対応済み
-  post_id=18133292929713264 | コメント数=17 | 未達
-  post_id=17894172069597736 | コメント数=1 | 未達
-  post_id=17949978693252405 | コメント数=1 | 未達
-  post_id=18007439318954130 | コメント数=15 | 未達
-  post_id=18162355774484131 | コメント数=1 | 未達
-  post_id=18101554214579711 | コメント数=26 | 対応済み
-  post_id=18342250150270583 | コメント数=3 | 未達
-  post_id=17901999390482997 | コメント数=9 | 未達
-  post_id=18121764838833450 | コメント数=4 | 未達
-  post_id=18484567996101250 | コメント数=11 | 未達
-  post_id=18091560278148979 | コメント数=4 | 未達
-  post_id=18339015217271198 | コメント数=1 | 未達
-  post_id=18086297528225472 | コメント数=3 | 未達
-  post_id=17933675733363585 | コメント数=3 | 未達
-  post_id=18057695204786301 | コメント数=31 | 対応済み
-  post_id=17940513555324053 | コメント数=31 | 対応済み
-  post_id=17993250011823177 | コメント数=3 | 未達
-  post_id=17884175382616984 | コメント数=0 | 未達
-  post_id=18213228247342365 | コメント数=6 | 未達
-  post_id=18482885218106722 | コメント数=4 | 未達
-  post_id=18214003735343747 | コメント数=7 | 未達
-  post_id=18348445888301561 | コメント数=3 | 未達
-  post_id=18049532207588117 | コメント数=2 | 未達
-  post_id=18117622945847537 | コメント数=1 | 未達
-  post_id=18102448937183200 | コメント数=4 | 未達
-  post_id=18113757308107186 | コメント数=0 | 未達
-  post_id=18216761278338663 | コメント数=2 | 未達
-  post_id=18152122330519864 | コメント数=25 | 対応済み
-  post_id=18069564773481403 | コメント数=7 | 未達
-  post_id=18104416844148785 | コメント数=7 | 未達
-  post_id=17926015167166632 | コメント数=3 | 未達
-  post_id=18418476688196279 | コメント数=0 | 未達
-  post_id=18110971376219183 | コメント数=6 | 未達
-  post_id=18122334079875950 | コメント数=113 | 対応済み
+  [エラー] post_id=18111231778995672: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18111231778995672?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17945515482055435: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17945515482055435?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18083295794690843: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18083295794690843?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18483011950111818: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18483011950111818?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18123528826878910: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18123528826878910?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17908738821461854: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17908738821461854?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18118752514694616: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18118752514694616?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18104218385617621: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18104218385617621?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18099628091198343: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18099628091198343?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18426528172180919: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18426528172180919?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17970433503131767: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17970433503131767?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18112535752961809: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18112535752961809?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18133292929713264: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18133292929713264?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17894172069597736: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17894172069597736?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17949978693252405: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17949978693252405?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18007439318954130: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18007439318954130?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18162355774484131: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18162355774484131?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18101554214579711: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18101554214579711?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18342250150270583: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18342250150270583?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17901999390482997: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17901999390482997?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18121764838833450: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18121764838833450?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18484567996101250: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18484567996101250?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18091560278148979: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18091560278148979?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18339015217271198: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18339015217271198?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18086297528225472: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18086297528225472?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17933675733363585: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17933675733363585?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18057695204786301: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18057695204786301?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17940513555324053: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17940513555324053?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17993250011823177: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17993250011823177?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17884175382616984: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17884175382616984?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18213228247342365: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18213228247342365?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18482885218106722: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18482885218106722?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18214003735343747: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18214003735343747?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18348445888301561: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18348445888301561?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18049532207588117: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18049532207588117?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18117622945847537: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18117622945847537?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18102448937183200: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18102448937183200?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18113757308107186: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18113757308107186?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18216761278338663: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18216761278338663?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18152122330519864: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18152122330519864?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18069564773481403: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18069564773481403?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18104416844148785: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18104416844148785?accountId=6a84492577555aae015291d7
+  [エラー] post_id=17926015167166632: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/17926015167166632?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18418476688196279: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18418476688196279?accountId=6a84492577555aae015291d7
+  [エラー] post_id=18110971376219183: 429 Client Error: Too Many Requests for url: https://zernio.com/api/v1/inbox/comments/18110971376219183?accountId=6a84492577555aae015291d7
+  post_id=18122334079875950 | コメント数=142 | 対応済み
   post_id=18618979447016916 | コメント数=1 | 未達
   post_id=18126935335604202 | コメント数=4 | 未達
   post_id=17982572432878661 | コメント数=1 | 未達
   post_id=18059265017790785 | コメント数=0 | 未達
-  post_id=17915067174245696 | コメント数=15 | 未達
+  post_id=17915067174245696 | コメント数=18 | 未達
   post_id=18611611759002971 | コメント数=2 | 未達
-  post_id=18156427057496105 | コメント数=70 | 対応済み
+  post_id=18156427057496105 | コメント数=103 | 対応済み
   post_id=18161842924468220 | コメント数=5 | 未達
   post_id=18017150369724002 | コメント数=6 | 未達
   post_id=18007834496766487 | コメント数=3 | 未達
-  post_id=18163463149476634 | コメント数=18 | 未達
+  post_id=18163463149476634 | コメント数=22 | ★対象
+    投稿本文冒頭: 家族の食事会、毎回わたしが全員分まとめて払って、あとから回収するのが「暗黙のルール」になってます。
+😅
+最初は「カード使...
+    検索キーワード: 割り勘アプリ
+    関連商品が見つからず、コメントはスキップされる見込み
   post_id=18010862867951068 | コメント数=3 | 未達
   post_id=18086273051222117 | コメント数=0 | 未達
-  post_id=18556594528075265 | コメント数=30 | 対応済み
-  post_id=18091251209158562 | コメント数=9 | 未達
+  post_id=18556594528075265 | コメント数=185 | 対応済み
+  post_id=18091251209158562 | コメント数=10 | 未達
   post_id=18113092222778190 | コメント数=3 | 未達
+  post_id=18134810740621824 | コメント数=0 | 未達
+  post_id=18046982231604416 | コメント数=51 | 対応済み
+  post_id=18055571447787142 | コメント数=12 | 未達
+  post_id=18119587039918171 | コメント数=111 | 対応済み
+  post_id=18106517918160828 | コメント数=7 | 未達
+  post_id=17931456057368410 | コメント数=18 | 未達
+  post_id=18029663366667374 | コメント数=24 | 対応済み
+  post_id=18441524170127089 | コメント数=6 | 未達
+  post_id=18403427578095447 | コメント数=5 | 未達
+  post_id=18015203606731273 | コメント数=0 | 未達
+  post_id=18112348298063957 | コメント数=5 | 未達
+  post_id=18379593499231284 | コメント数=11 | 未達
+  post_id=18112955440997179 | コメント数=5 | 未達
+  post_id=18107325284177843 | コメント数=0 | 未達
+  post_id=18075314156701839 | コメント数=14 | 未達
+  post_id=18109769810277121 | コメント数=17 | 未達
+  post_id=17881392243619918 | コメント数=5 | 未達
+  post_id=18377343832237418 | コメント数=416 | ★対象
+    投稿本文冒頭: 友人の引越しを3人で手伝ったら、お礼が「ジュース1本ずつ」だった😅
+さすがに引いたけど、まあ気にしないでいようと思ってた...
+    検索キーワード: 引越し手伝いギフト
+    関連商品が見つからず、コメントはスキップされる見込み
+  post_id=18120174292683543 | コメント数=2 | 未達
+  post_id=18022087802905326 | コメント数=8 | 未達
 
-  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 0 件
+  → accounts/account4_threads_engagement.yaml: しきい値超え・未対応の投稿は 2 件
