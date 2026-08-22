@@ -54,10 +54,16 @@ def is_within_check_window(posted_at_str: str, days: int) -> bool:
     return (now - posted_at) <= datetime.timedelta(days=days)
 
 
-def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
+def get_comment_count(api_key: str, post_id: str, account_id: str, max_pages: int = 8) -> int:
+    """
+    コメント数を取得する。バズった投稿は数百〜数千件になることがあり、
+    全件をページネーションで数え続けると処理が非常に重くなるため、
+    最大ページ数で打ち切る(それでもしきい値判定には十分な件数を確保できる)。
+    """
     headers = {"Authorization": f"Bearer {api_key}"}
     total = 0
     cursor = None
+    pages = 0
 
     while True:
         params = {"accountId": account_id}
@@ -74,8 +80,12 @@ def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
         data = r.json()
         comments = data.get("comments", data.get("data", []))
         total += len(comments)
+        pages += 1
 
         pagination = data.get("pagination", {})
+        if pages >= max_pages:
+            # 上限に達した時点で打ち切る(すでにしきい値は大きく超えている想定)
+            break
         if pagination.get("hasMore") and pagination.get("cursor"):
             cursor = pagination["cursor"]
         else:
@@ -84,16 +94,18 @@ def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
     return total
 
 
-def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: str) -> bool:
+def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: str, max_pages: int = 8) -> bool:
     """
     この投稿に、指定アカウント自身によるコメントが既についているかを確認する。
     (自動投稿・手動投稿を問わず、二重コメントを防ぐため)
+    バズった投稿での負荷を抑えるため、確認するページ数には上限を設ける。
     """
     if not own_username:
         return False
 
     headers = {"Authorization": f"Bearer {api_key}"}
     cursor = None
+    pages = 0
     own_username_clean = own_username.lstrip("@").lower()
 
     while True:
@@ -120,7 +132,10 @@ def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: s
             if author and author == own_username_clean:
                 return True
 
+        pages += 1
         pagination = data.get("pagination", {})
+        if pages >= max_pages:
+            break
         if pagination.get("hasMore") and pagination.get("cursor"):
             cursor = pagination["cursor"]
         else:
