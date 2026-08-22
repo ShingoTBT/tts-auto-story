@@ -54,11 +54,14 @@ def is_within_check_window(posted_at_str: str, days: int) -> bool:
     return (now - posted_at) <= datetime.timedelta(days=days)
 
 
-def get_comment_count(api_key: str, post_id: str, account_id: str, max_pages: int = 8) -> int:
+def get_comment_count(api_key: str, post_id: str, account_id: str, max_pages: int = 8, early_exit_threshold: int = None) -> int:
     """
     コメント数を取得する。バズった投稿は数百〜数千件になることがあり、
     全件をページネーションで数え続けると処理が非常に重くなるため、
     最大ページ数で打ち切る(それでもしきい値判定には十分な件数を確保できる)。
+
+    early_exit_threshold を指定すると、その件数を超えた時点で即座に打ち切る
+    (「しきい値を超えているかどうか」だけが分かれば十分な場面で高速化するため)。
     """
     headers = {"Authorization": f"Bearer {api_key}"}
     total = 0
@@ -82,6 +85,9 @@ def get_comment_count(api_key: str, post_id: str, account_id: str, max_pages: in
         total += len(comments)
         pages += 1
 
+        if early_exit_threshold is not None and total > early_exit_threshold:
+            break
+
         pagination = data.get("pagination", {})
         if pages >= max_pages:
             # 上限に達した時点で打ち切る(すでにしきい値は大きく超えている想定)
@@ -94,52 +100,39 @@ def get_comment_count(api_key: str, post_id: str, account_id: str, max_pages: in
     return total
 
 
-def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: str, max_pages: int = 8) -> bool:
+def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: str) -> bool:
     """
     この投稿に、指定アカウント自身によるコメントが既についているかを確認する。
     (自動投稿・手動投稿を問わず、二重コメントを防ぐため)
-    バズった投稿での負荷を抑えるため、確認するページ数には上限を設ける。
+
+    運用上、自分でコメントする際は必ずピン留めしているため、
+    自分のコメントは常に一覧の先頭に来る想定。そのため1ページ目だけ確認すれば十分で、
+    バズった投稿でも全件ページネーションする必要がない。
     """
     if not own_username:
         return False
 
     headers = {"Authorization": f"Bearer {api_key}"}
-    cursor = None
-    pages = 0
     own_username_clean = own_username.lstrip("@").lower()
 
-    while True:
-        params = {"accountId": account_id}
-        if cursor:
-            params["cursor"] = cursor
+    r = requests.get(
+        f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
+        headers=headers,
+        params={"accountId": account_id},
+        timeout=20,
+    )
+    r.raise_for_status()
+    data = r.json()
+    comments = data.get("comments", data.get("data", []))
 
-        r = requests.get(
-            f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
-            headers=headers,
-            params=params,
-            timeout=20,
-        )
-        r.raise_for_status()
-        data = r.json()
-        comments = data.get("comments", data.get("data", []))
-
-        for c in comments:
-            author = str(
-                c.get("username")
-                or c.get("from", {}).get("username", "")
-                or c.get("authorUsername", "")
-            ).lstrip("@").lower()
-            if author and author == own_username_clean:
-                return True
-
-        pages += 1
-        pagination = data.get("pagination", {})
-        if pages >= max_pages:
-            break
-        if pagination.get("hasMore") and pagination.get("cursor"):
-            cursor = pagination["cursor"]
-        else:
-            break
+    for c in comments:
+        author = str(
+            c.get("username")
+            or c.get("from", {}).get("username", "")
+            or c.get("authorUsername", "")
+        ).lstrip("@").lower()
+        if author and author == own_username_clean:
+            return True
 
     return False
 
@@ -340,7 +333,7 @@ def process_account(config_path: str):
         post_id = record["post_id"]
 
         try:
-            count = get_comment_count(api_key, post_id, account_id)
+            count = get_comment_count(api_key, post_id, account_id, early_exit_threshold=threshold)
         except Exception as e:
             print(f"コメント数取得エラー (post_id={post_id}): {e}")
             continue
