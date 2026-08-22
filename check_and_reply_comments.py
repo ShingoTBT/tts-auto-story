@@ -181,7 +181,7 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
 def generate_comment_phrase(post_text: str, product_name: str, model: str) -> str:
     """
     実際に見つかった商品名と投稿内容から、コメントの1行目(導入文)を丸ごと生成する。
-    「↓↓ad」より上の部分に入る、投稿内容と商品の両方に自然に合った短い一言。
+    「↓↓」の後に「#AD」表記を挟んでから貼るリンクの、前置きとなる部分に入る、投稿内容と商品の両方に自然に合った短い一言。
     """
     client = anthropic.Anthropic()
     response = client.messages.create(
@@ -403,7 +403,7 @@ def process_account(config_path: str):
             print(f"商品検索処理でエラー (post_id={post_id}): {e} — この投稿はスキップして次に進みます")
             continue
 
-        comment_text = f"{comment_phrase}\n　↓↓ad\n{link_url}"
+        comment_text = f"{comment_phrase}\n　↓↓\n#AD\n{link_url}"
 
         try:
             post_reply_comment(api_key, post_id, account_id, comment_text)

@@ -98,7 +98,7 @@ def main():
                         comment_phrase = generate_travel_fallback_phrase(post_text, config["model"])
                         link_url = build_redirect_url(travel_link) if travel_link else "(RAKUTEN_AFFILIATE_ID未設定)"
 
-                    comment_text = f"{comment_phrase}\n　↓↓ad\n{link_url}"
+                    comment_text = f"{comment_phrase}\n　↓↓\n#AD\n{link_url}"
                     print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
                 except Exception as e:
                     print(f"    [エラー] 商品検索処理で失敗: {e}")
