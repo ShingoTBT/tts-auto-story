@@ -18,9 +18,13 @@ from check_and_reply_comments import (
     load_posted_threads,
     is_within_check_window,
     get_comment_count,
+    has_own_comment,
     extract_topic_keyword,
     generate_comment_phrase,
+    generate_travel_fallback_phrase,
+    build_travel_fallback_link,
     build_redirect_url,
+    _extract_own_username,
 )
 from rakuten_product_search import search_product
 
@@ -37,6 +41,7 @@ def main():
         account_id = os.environ[config["zernio_account_id_env"]]
         threshold = config.get("comment_threshold", 20)
         check_days = config.get("comment_check_days", 2)
+        own_username = _extract_own_username(config)
 
         log_path = Path(config["output_dir"]) / "posted_threads.jsonl"
         records = load_posted_threads(str(log_path))
@@ -61,6 +66,15 @@ def main():
             print(f"  post_id={post_id} | コメント数={count} | {status}")
 
             if count > threshold and not already_commented:
+                if own_username:
+                    try:
+                        if has_own_comment(api_key, post_id, account_id, own_username):
+                            print("    → 既に自分のコメントが存在するためスキップ見込み")
+                            continue
+                    except Exception as e:
+                        print(f"    [エラー] 既存コメント確認で失敗: {e}")
+                        continue
+
                 over_threshold_count += 1
                 try:
                     text_file = record.get("text_file")
@@ -76,11 +90,16 @@ def main():
                     print(f"    検索キーワード: {keyword}")
                     if product:
                         comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
-                        comment_text = f"{comment_phrase}\n　↓↓ad\n{build_redirect_url(product['url'])}"
+                        link_url = build_redirect_url(product["url"])
                         print(f"    商品: {product['name'][:40]}")
-                        print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
                     else:
-                        print("    関連商品が見つからず、コメントはスキップされる見込み")
+                        print("    関連商品が見つからず、楽天トラベルへのフォールバックを使用")
+                        travel_link = build_travel_fallback_link()
+                        comment_phrase = generate_travel_fallback_phrase(post_text, config["model"])
+                        link_url = build_redirect_url(travel_link) if travel_link else "(RAKUTEN_AFFILIATE_ID未設定)"
+
+                    comment_text = f"{comment_phrase}\n　↓↓ad\n{link_url}"
+                    print(f"    コメント候補:\n      {comment_text.replace(chr(10), chr(10)+'      ')}")
                 except Exception as e:
                     print(f"    [エラー] 商品検索処理で失敗: {e}")
 

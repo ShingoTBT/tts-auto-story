@@ -84,6 +84,51 @@ def get_comment_count(api_key: str, post_id: str, account_id: str) -> int:
     return total
 
 
+def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: str) -> bool:
+    """
+    この投稿に、指定アカウント自身によるコメントが既についているかを確認する。
+    (自動投稿・手動投稿を問わず、二重コメントを防ぐため)
+    """
+    if not own_username:
+        return False
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    cursor = None
+    own_username_clean = own_username.lstrip("@").lower()
+
+    while True:
+        params = {"accountId": account_id}
+        if cursor:
+            params["cursor"] = cursor
+
+        r = requests.get(
+            f"{ZERNIO_API_BASE}/inbox/comments/{post_id}",
+            headers=headers,
+            params=params,
+            timeout=20,
+        )
+        r.raise_for_status()
+        data = r.json()
+        comments = data.get("comments", data.get("data", []))
+
+        for c in comments:
+            author = str(
+                c.get("username")
+                or c.get("from", {}).get("username", "")
+                or c.get("authorUsername", "")
+            ).lstrip("@").lower()
+            if author and author == own_username_clean:
+                return True
+
+        pagination = data.get("pagination", {})
+        if pagination.get("hasMore") and pagination.get("cursor"):
+            cursor = pagination["cursor"]
+        else:
+            break
+
+    return False
+
+
 def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -> dict:
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -164,6 +209,51 @@ def generate_comment_phrase(post_text: str, product_name: str, model: str) -> st
     return phrase
 
 
+def generate_travel_fallback_phrase(post_text: str, model: str) -> str:
+    """
+    関連商品が見つからなかった場合のフォールバック用。
+    投稿内容に絡めて「旅にでも出ては？」という切り口の導入文を生成する。
+    """
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=model,
+        max_tokens=60,
+        system=(
+            "あなたはSNSコメントの導入文を考える担当です。\n"
+            "与えられた投稿の内容を踏まえて、「そんな気分の時は、旅にでも出てリフレッシュしては？」"
+            "という趣旨の、投稿の話題に絡めた短い導入文を1つ考えてください。\n\n"
+            "ルール：\n"
+            "・投稿の具体的な状況(誰との、どんな出来事か)に軽く触れつつ、"
+            "「気分転換に旅行でも」という流れに自然につなげること\n"
+            "・「〜な気分の時こそ、旅に出たくなりますよね」のように、"
+            "毎回同じ言い回しに固定せず、自然なバリエーションをつけること\n"
+            "・1〜2行、合計30文字程度までの短さにすること\n"
+            "・「ad」「PR」などの広告表記語は含めないこと(別途付与されるため)\n\n"
+            "例：\n"
+            "投稿「引越しの手伝いのお礼がジュース1本だけだった」\n"
+            "→「モヤモヤした時は、いっそ旅にでも出てみては？」\n\n"
+            "出力は導入文のみ。説明・記号・Markdown記法は一切含めないこと。"
+        ),
+        messages=[{"role": "user", "content": post_text[:500]}],
+    )
+    parts = [b.text for b in response.content if b.type == "text"]
+    phrase = "".join(parts).strip()
+    if len(phrase) > 60:
+        phrase = phrase[:60]
+    return phrase
+
+
+def build_travel_fallback_link() -> str | None:
+    """楽天トラベルのトップページへの、共通アフィリエイトIDを使ったリンクを組み立てる"""
+    import urllib.parse
+    affiliate_id = os.environ.get("RAKUTEN_AFFILIATE_ID")
+    if not affiliate_id:
+        return None
+    target = "https://travel.rakuten.co.jp/"
+    encoded = urllib.parse.quote(target, safe="")
+    return f"https://hb.afl.rakuten.co.jp/hgc/{affiliate_id}/?pc={encoded}&m={encoded}"
+
+
 def build_redirect_url(target_url: str) -> str:
     """プレビュー抑制用の中継リダイレクトを経由したURLを組み立てる"""
     import urllib.parse
@@ -204,6 +294,14 @@ def main():
             print(f"[エラー] {config_path} の処理全体が失敗しました: {e} — 次のアカウントに進みます")
 
 
+def _extract_own_username(config: dict) -> str:
+    """設定のthreads_url(例: https://www.threads.com/@kusetsuyo.qa)からユーザー名を取り出す"""
+    url = config.get("threads_url", "")
+    if "@" in url:
+        return url.split("@")[-1].strip("/")
+    return ""
+
+
 def process_account(config_path: str):
     config = load_account_config(config_path)
     api_key = os.environ[config.get("zernio_api_key_env", "ZERNIO_API_KEY")]
@@ -237,6 +335,20 @@ def process_account(config_path: str):
         if count <= threshold:
             continue
 
+        # 既に自分自身がこの投稿にコメント済みでないか確認する
+        # (自動・手動を問わず、二重コメントを防ぐため)
+        own_username = _extract_own_username(config)
+        try:
+            if own_username and has_own_comment(api_key, post_id, account_id, own_username):
+                print(f"post_id={post_id}: 既に自分のコメントが存在するためスキップします")
+                record["commented"] = True
+                updated = True
+                rewrite_posted_threads(str(log_path), records)
+                continue
+        except Exception as e:
+            print(f"既存コメント確認でエラー (post_id={post_id}): {e} — 念のためスキップします")
+            continue
+
         try:
             # 元投稿本文を読み込み、商品検索キーワードを抽出
             text_file = record.get("text_file")
@@ -249,17 +361,25 @@ def process_account(config_path: str):
             print(f"商品検索キーワード: {keyword}")
 
             product = search_product(keyword)
-            if not product:
-                print("関連商品が見つからなかったため、今回はコメントをスキップします")
-                continue
+            if product:
+                comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
+                link_url = build_redirect_url(product["url"])
+            else:
+                # 関連商品が見つからない場合は、楽天トラベルへのフォールバックリンクを使う
+                print("関連商品が見つからなかったため、楽天トラベルへのフォールバックリンクを使用します")
+                travel_link = build_travel_fallback_link()
+                if not travel_link:
+                    print("楽天トラベル用のアフィリエイトIDが未設定のため、今回はコメントをスキップします")
+                    continue
+                comment_phrase = generate_travel_fallback_phrase(post_text, config["model"])
+                link_url = build_redirect_url(travel_link)
 
-            comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
             print(f"コメント文言: {comment_phrase}")
         except Exception as e:
             print(f"商品検索処理でエラー (post_id={post_id}): {e} — この投稿はスキップして次に進みます")
             continue
 
-        comment_text = f"{comment_phrase}\n　↓↓ad\n{build_redirect_url(product['url'])}"
+        comment_text = f"{comment_phrase}\n　↓↓ad\n{link_url}"
 
         try:
             post_reply_comment(api_key, post_id, account_id, comment_text)
