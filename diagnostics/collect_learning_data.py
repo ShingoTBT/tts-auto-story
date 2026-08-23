@@ -60,6 +60,13 @@ def main():
                 records.append(json.loads(line))
 
     results = []
+    errors = []
+
+    def save_progress():
+        output_path = Path(config["output_dir"]) / "learning_data.json"
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump({"results": results, "errors": errors, "total_records": len(records)}, f, ensure_ascii=False, indent=2)
+        return output_path
 
     for record in records:
         post_id = record.get("post_id")
@@ -75,6 +82,8 @@ def main():
             comments = fetch_all_comments(api_key, post_id, account_id)
         except Exception as e:
             print(f"エラー (post_id={post_id}): {e}")
+            errors.append(f"post_id={post_id}: {e}")
+            save_progress()
             continue
 
         own_comments = []
@@ -96,11 +105,10 @@ def main():
         else:
             print(f"post_id={post_id}: 自分のコメントなし")
 
-    output_path = Path(config["output_dir"]) / "learning_data.json"
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+        save_progress()
 
-    print(f"\n完了: {len(results)}件の投稿にコメントあり -> {output_path}")
+    output_path = save_progress()
+    print(f"\n完了: {len(results)}件の投稿にコメントあり, エラー{len(errors)}件 -> {output_path}")
 
 
 if __name__ == "__main__":
