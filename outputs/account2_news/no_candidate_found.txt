@@ -1,0 +1,10 @@
+確認日時: 2026-08-23T12:40:08.419608
+
+- j1 (急上昇度:2000+) -> https://news.yahoo.co.jp/articles/46bffdb286fefd887f0161496548543be3fc63db
+- jリーグ 順位 (急上昇度:500+) -> https://www.jfa.jp/news/00036647/
+- ベイスターズ (急上昇度:500+) -> https://news.yahoo.co.jp/articles/2a51fba5fca6fcbe22ea51f6dd38544af20fb09a
+- vivant シンシー (急上昇度:500+) -> https://news.yahoo.co.jp/articles/a47be655d655e8615bb6ab8c632a2b741dad680e
+- シンシー vivant (急上昇度:500+) -> https://news.yahoo.co.jp/articles/949a5cf4568cc2ec53549dad417030d9daf6134d
+- psv (急上昇度:200+) -> https://www.ajaxshowtime.com/voetbalnieuws/live-eredivisie-psv-neemt-het-op-tegen-fc-groningen-feyenoord-op-bezoek-bij-sc-cambuur
+- オランダgp (急上昇度:200+) -> https://news.yahoo.co.jp/articles/1004a67e3604a87f26a845fc741149e31023cedf
+- バレーボール ブラジル 男子 代表 (急上昇度:200+) -> https://newsdig.tbs.co.jp/articles/-/2886123
