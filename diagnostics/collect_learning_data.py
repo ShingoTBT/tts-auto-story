@@ -46,6 +46,21 @@ def fetch_all_comments(api_key: str, post_id: str, account_id: str, max_pages: i
 
 
 def main():
+    try:
+        _run()
+    except Exception as e:
+        import traceback
+        crash_log = traceback.format_exc()
+        print(crash_log)
+        try:
+            with open("outputs/account4_threads/learning_data_crash.txt", "w", encoding="utf-8") as f:
+                f.write(crash_log)
+        except Exception:
+            pass
+        raise
+
+
+def _run():
     config = load_account_config("accounts/account4_threads_engagement.yaml")
     api_key = os.environ[config.get("zernio_api_key_env", "ZERNIO_API_KEY")]
     account_id = os.environ[config["zernio_account_id_env"]]
