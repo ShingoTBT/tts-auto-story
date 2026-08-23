@@ -8,9 +8,13 @@ account4(kusetsuyo.qa)の全投稿について、投稿本文と、
 import os
 import json
 import re
+import sys
 from pathlib import Path
 
 import requests
+
+# ルート直下のモジュールをインポートできるようにパスを追加
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from check_and_reply_comments import load_account_config, _extract_own_username
 

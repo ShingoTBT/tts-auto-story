@@ -20,7 +20,14 @@ jobs:
         env:
           ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
           ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
-        run: python diagnostics/collect_learning_data.py
+        run: |
+          echo "=== pwd/ls確認 ==="
+          pwd
+          ls -la
+          ls -la diagnostics/
+          python3 diagnostics/collect_learning_data.py 2>&1 | tee /tmp/collect_log.txt || true
+          mkdir -p outputs/account4_threads
+          cp /tmp/collect_log.txt outputs/account4_threads/collect_stdout.txt
       - name: Commit result
         if: always()
         run: |
