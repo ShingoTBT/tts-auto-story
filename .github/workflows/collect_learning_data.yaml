@@ -1,0 +1,34 @@
+name: collect_learning_data
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Collect learning data
+        env:
+          ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
+          ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
+        run: python diagnostics/collect_learning_data.py
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: collected comment learning data"
+            git pull --rebase origin main
+            git push
+          fi
