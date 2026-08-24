@@ -1,5 +1,6 @@
-トークン取得成功: Atc|MQICILjtxFOxS3KN...
+トークン取得成功: Atc|MQICIBMkgrC0hzUJ...
 検索結果: {
-  "name": "職人の珈琲 無糖 ボトルコーヒー ラベルレス 900mlx12本[アイスコーヒー]",
-  "url": "https://www.amazon.co.jp/dp/B09SKWC3R8?tag=kokodawancom-22&linkCode=osi&th=1&psc=1"
+  "name": "Francfranc フランフラン プチミニョン ハンドクリームセット ホワイト 3個セット 女性 贈り物 ギフト プレゼント",
+  "url": "https://www.amazon.co.jp/dp/B0FT77G4B3?tag=kokodawancom-22&linkCode=osi&th=1&psc=1"
 }
+検索エラー: ModuleNotFoundError("No module named 'yaml'")
