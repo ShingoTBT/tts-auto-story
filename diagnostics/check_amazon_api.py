@@ -1,5 +1,9 @@
 import os
+import sys
 import json
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from amazon_product_search import search_product, get_access_token
 
 try:
