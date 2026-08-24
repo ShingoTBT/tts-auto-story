@@ -26,7 +26,7 @@ from check_and_reply_comments import (
     build_redirect_url,
     _extract_own_username,
 )
-from rakuten_product_search import search_product
+from product_search import search_product
 
 
 def main():
@@ -84,13 +84,14 @@ def main():
                     post_text = Path(text_file).read_text(encoding="utf-8")
 
                     keyword = extract_topic_keyword(post_text, config["model"])
-                    product = search_product(keyword)
+                    provider = os.environ.get("PRODUCT_SEARCH_PROVIDER", "amazon").lower().strip()
+                    product = search_product(keyword, provider)
 
                     print(f"    投稿本文冒頭: {post_text[:60].strip()}...")
-                    print(f"    検索キーワード: {keyword}")
+                    print(f"    検索キーワード: {keyword} (provider={provider})")
                     if product:
                         comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
-                        link_url = build_redirect_url(product["url"])
+                        link_url = build_redirect_url(product["url"]) if provider == "rakuten" else product["url"]
                         print(f"    商品: {product['name'][:40]}")
                     else:
                         print("    関連商品が見つからず、楽天トラベルへのフォールバックを使用")

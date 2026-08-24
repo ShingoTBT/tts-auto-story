@@ -20,7 +20,7 @@ import requests
 import anthropic
 
 from generate import load_system_prompt
-from rakuten_product_search import search_product
+from product_search import search_product
 
 ZERNIO_API_BASE = "https://zernio.com/api/v1"
 
@@ -403,12 +403,19 @@ def process_account(config_path: str):
             keyword = extract_topic_keyword(post_text, config["model"])
             print(f"商品検索キーワード: {keyword}")
 
-            product = search_product(keyword)
+            provider = os.environ.get("PRODUCT_SEARCH_PROVIDER", "amazon").lower().strip()
+            product = search_product(keyword, provider)
             if product:
                 comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
-                link_url = build_redirect_url(product["url"])
+                if provider == "rakuten":
+                    # 楽天のみ、プレビュー抑制用の中継リダイレクトを経由する
+                    # (Amazonは規約上、独自リダイレクトの使用が禁止されているため、素のリンクをそのまま使う)
+                    link_url = build_redirect_url(product["url"])
+                else:
+                    link_url = product["url"]
             else:
                 # 関連商品が見つからない場合は、楽天トラベルへのフォールバックリンクを使う
+                # (フォールバック自体は常に楽天のリンクなので、プレビュー抑制の中継を使ってよい)
                 print("関連商品が見つからなかったため、楽天トラベルへのフォールバックリンクを使用します")
                 travel_link = build_travel_fallback_link()
                 if not travel_link:
