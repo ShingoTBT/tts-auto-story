@@ -1,4 +1,5 @@
-Traceback (most recent call last):
-  File "/home/runner/work/tts-auto-story/tts-auto-story/diagnostics/check_amazon_api.py", line 3, in <module>
-    from amazon_product_search import search_product, get_access_token
-ModuleNotFoundError: No module named 'amazon_product_search'
+トークン取得成功: Atc|MQICILjtxFOxS3KN...
+検索結果: {
+  "name": "職人の珈琲 無糖 ボトルコーヒー ラベルレス 900mlx12本[アイスコーヒー]",
+  "url": "https://www.amazon.co.jp/dp/B09SKWC3R8?tag=kokodawancom-22&linkCode=osi&th=1&psc=1"
+}
