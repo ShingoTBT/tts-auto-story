@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/runner/work/tts-auto-story/tts-auto-story/diagnostics/check_amazon_api.py", line 3, in <module>
+    from amazon_product_search import search_product, get_access_token
+ModuleNotFoundError: No module named 'amazon_product_search'
