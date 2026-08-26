@@ -138,7 +138,7 @@ def has_own_comment(api_key: str, post_id: str, account_id: str, own_username: s
     return False
 
 
-def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -> dict:
+def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str, suppress_preview: bool = False) -> dict:
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -147,6 +147,12 @@ def post_reply_comment(api_key: str, post_id: str, account_id: str, text: str) -
         "accountId": account_id,
         "message": text,
     }
+    if suppress_preview:
+        # Meta公式APIのlink_attachmentパラメータに相当する制御を試みる
+        # (Zernio側がこれらのいずれかに対応していることを期待して複数候補を送る)
+        payload["linkAttachment"] = None
+        payload["disableLinkPreview"] = True
+        payload["suppressPreview"] = True
     r = requests.post(f"{ZERNIO_API_BASE}/inbox/comments/{post_id}", headers=headers, json=payload, timeout=20)
     r.raise_for_status()
     return r.json()

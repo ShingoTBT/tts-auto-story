@@ -4,6 +4,7 @@ chatwork_label: "話題のニュース_アカウント3(Threads)"
 threads_url: "https://www.threads.com/@iikotobiyori"
 prompt_file: "prompts/threads_news_v1.md"
 titles_log_file: "logs/account3_threads_titles.jsonl"
+google_trend_ratio: 0.0  # 0.0=はてな100%, 1.0=Google100%, 0.5=半々
 output_dir: "outputs/account3_threads"
 model: "claude-sonnet-4-6"
 recent_titles_count: 30

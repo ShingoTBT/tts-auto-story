@@ -15,6 +15,7 @@ Googleトレンドの急上昇ワードRSSを取得し、
 import sys
 import re
 import json
+import random
 from pathlib import Path
 
 import yaml
@@ -23,6 +24,10 @@ import trafilatura
 import xml.etree.ElementTree as ET
 
 TRENDS_RSS_URL = "https://trends.google.co.jp/trending/rss?geo=JP"
+HATENA_RSS_URLS = [
+    "https://b.hatena.ne.jp/hotentry/entertainment.rss",
+    "https://b.hatena.ne.jp/hotentry/social.rss",
+]
 MIN_ARTICLE_CHARS = 300
 MAX_CANDIDATES_TO_CHECK = 10
 
@@ -39,6 +44,7 @@ def parse_traffic(approx_traffic: str) -> int:
 
 
 def fetch_trend_items() -> list[dict]:
+    """Googleトレンド(急上昇ワード)を取得する"""
     resp = requests.get(TRENDS_RSS_URL, timeout=20)
     resp.raise_for_status()
 
@@ -68,6 +74,48 @@ def fetch_trend_items() -> list[dict]:
                 "keyword": title,
                 "traffic": parse_traffic(traffic),
                 "news_items": news_items,
+            })
+
+    items.sort(key=lambda x: x["traffic"], reverse=True)
+    return items
+
+
+def fetch_hatena_items() -> list[dict]:
+    """
+    はてなブックマークの人気エントリー(エンタメ・世の中カテゴリ)を取得する。
+    Googleトレンドと同じ形式({keyword, traffic, news_items})に変換して返す。
+    """
+    ns = {"content": "http://purl.org/rss/1.0/modules/content/"}
+    items = []
+
+    for rss_url in HATENA_RSS_URLS:
+        try:
+            resp = requests.get(rss_url, timeout=20)
+            resp.raise_for_status()
+        except Exception as e:
+            print(f"  はてなRSS取得エラー ({rss_url}): {e}")
+            continue
+
+        try:
+            root = ET.fromstring(resp.content)
+        except Exception as e:
+            print(f"  はてなRSS解析エラー ({rss_url}): {e}")
+            continue
+
+        for item in root.findall(".//item"):
+            title = item.findtext("title", default="").strip()
+            link = item.findtext("link", default="").strip()
+            if not title or not link:
+                continue
+
+            # タイトル末尾の "(123 users)" 等からブックマーク数を抽出できる場合がある
+            m = re.search(r"\((\d+)\s*users?\)", title)
+            traffic = int(m.group(1)) if m else 0
+
+            items.append({
+                "keyword": title,
+                "traffic": traffic,
+                "news_items": [{"url": link, "title": title, "source": "はてなブックマーク"}],
             })
 
     items.sort(key=lambda x: x["traffic"], reverse=True)
@@ -135,9 +183,21 @@ def main():
     if recent_keywords:
         print(f"直近24時間で使用済みのキーワード({len(recent_keywords)}件): {recent_keywords}")
 
-    print("Googleトレンドを取得中...")
-    trend_items = fetch_trend_items()
-    print(f"{len(trend_items)}件のトレンドを取得しました")
+    # google_trend_ratio: 0.0〜1.0。Googleトレンドを使う確率。
+    # 0.0 なら常にはてな、1.0 なら常にGoogle、0.5なら半々でランダムに混在。
+    google_ratio = float(config.get("google_trend_ratio", 0.0))
+    use_google = random.random() < google_ratio
+
+    if use_google:
+        print(f"今回はGoogleトレンドを使用します(google_trend_ratio={google_ratio})")
+        print("Googleトレンドを取得中...")
+        trend_items = fetch_trend_items()
+    else:
+        print(f"今回ははてなブックマークを使用します(google_trend_ratio={google_ratio})")
+        print("はてなブックマークの人気エントリーを取得中...")
+        trend_items = fetch_hatena_items()
+
+    print(f"{len(trend_items)}件の候補を取得しました")
 
     checked = 0
     for item in trend_items:
