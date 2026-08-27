@@ -1,11 +1,2 @@
-確認日時: 2026-08-24T19:22:43.726237
+確認日時: 2026-08-27T02:26:30.231744
 
-- 熱中症警戒アラート (急上昇度:20000+) -> https://weathernews.jp/news/202608/240251/
-- フラム 対 チェルシー (急上昇度:1000+) -> https://www.goal.com/jp/%E3%83%8B%E3%83%A5%E3%83%BC%E3%82%B9/fulham-chelsea-md1-premier-league-20260825/blt2c42a1ffbd2972bf
-- apple 折りたたみ iphone (急上昇度:1000+) -> https://news.yahoo.co.jp/articles/d4ea1664195518e7aec14e8471e12a3c142ef0e1
-- ベッセント (急上昇度:1000+) -> https://www.nikkei.com/article/DGXZQOGN24AA70U6A820C2000000/
-- fulham vs chelsea (急上昇度:200+) -> https://www.bbc.com/sport/football/live/cqp8xg4jy4r3t
-- vsgアルトグリーニッケ 対 ヴォルフスブルク (急上昇度:200+) -> https://www.bbc.com/sport/football/live/cvgljwdxgyggt
-- gboard (急上昇度:200+) -> https://www.lifehacker.jp/article/2608-10-gboard-hacks-every-android-user-should-know/
-- ダルビッシュ有 (急上昇度:100+) -> https://dnomotoke.com/archives/20260822000005/
-- poco f9 ultra (急上昇度:100+) -> https://www.mundoxiaomi.com/noticias/poco-vuelve-artilleria-pesada-xiaomi-confirma-lanzamiento-nuevos-f9-pro-f9-ultra-vas-a-poder-comprar-baratos
