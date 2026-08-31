@@ -84,8 +84,12 @@ def fetch_hatena_items() -> list[dict]:
     """
     はてなブックマークの人気エントリー(エンタメ・世の中カテゴリ)を取得する。
     Googleトレンドと同じ形式({keyword, traffic, news_items})に変換して返す。
+
+    はてなのフィードはRSS1.0(RDF)形式で、要素がデフォルト名前空間
+    (http://purl.org/rss/1.0/)に属しているため、名前空間を明示して検索する必要がある。
     """
-    ns = {"content": "http://purl.org/rss/1.0/modules/content/"}
+    RSS1_NS = "http://purl.org/rss/1.0/"
+    ns = {"rss": RSS1_NS}
     items = []
 
     for rss_url in HATENA_RSS_URLS:
@@ -102,9 +106,9 @@ def fetch_hatena_items() -> list[dict]:
             print(f"  はてなRSS解析エラー ({rss_url}): {e}")
             continue
 
-        for item in root.findall(".//item"):
-            title = item.findtext("title", default="").strip()
-            link = item.findtext("link", default="").strip()
+        for item in root.findall(".//rss:item", ns):
+            title = item.findtext("rss:title", default="", namespaces=ns).strip()
+            link = item.findtext("rss:link", default="", namespaces=ns).strip()
             if not title or not link:
                 continue
 
