@@ -1,0 +1,22 @@
+[https://b.hatena.ne.jp/hotentry/entertainment.rss] status=200, content-type=application/xml, len=242172
+  body先頭300字: <?xml version="1.0" encoding="UTF-8"?>
+
+<rdf:RDF
+ xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns="http://purl.org/rss/1.0/"
+ xmlns:admin="http://webns.net/mvcb/"
+ xmlns:content="http://purl.org/rss/1.0/modules/content/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/"
+ xmlns:hatena="http
+  パースOK, item数=0
+[https://b.hatena.ne.jp/hotentry/social.rss] status=200, content-type=application/xml, len=246869
+  body先頭300字: <?xml version="1.0" encoding="UTF-8"?>
+
+<rdf:RDF
+ xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns="http://purl.org/rss/1.0/"
+ xmlns:admin="http://webns.net/mvcb/"
+ xmlns:content="http://purl.org/rss/1.0/modules/content/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/"
+ xmlns:hatena="http
+  パースOK, item数=0
