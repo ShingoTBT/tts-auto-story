@@ -28,6 +28,8 @@ def render(image_tool_url: str, source_text: str, output_dir: Path, file_prefix:
 
     last_error = None
     for attempt in range(1, 3):
+        page = None
+        browser = None
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch()
@@ -49,18 +51,29 @@ def render(image_tool_url: str, source_text: str, output_dir: Path, file_prefix:
         except Exception as e:
             last_error = e
             print(f"[試行{attempt}] 画像化に失敗しました: {e}")
-            try:
-                debug_dir = output_dir / "debug"
-                debug_dir.mkdir(parents=True, exist_ok=True)
-                page.screenshot(path=str(debug_dir / f"{file_prefix}_error_attempt{attempt}.png"))
-                with open(debug_dir / f"{file_prefix}_error_attempt{attempt}.html", "w", encoding="utf-8") as f:
-                    f.write(page.content())
-            except Exception as e2:
-                print(f"デバッグ情報の保存にも失敗しました: {e2}")
-            try:
-                browser.close()
-            except Exception:
-                pass
+
+            # エラー内容は、スクリーンショットが取れる/取れないに関わらず必ずテキストで残す
+            debug_dir = output_dir / "debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            import traceback
+            with open(debug_dir / f"{file_prefix}_error_attempt{attempt}.txt", "w", encoding="utf-8") as f:
+                f.write(traceback.format_exc())
+
+            if page is not None:
+                try:
+                    page.screenshot(path=str(debug_dir / f"{file_prefix}_error_attempt{attempt}.png"))
+                    with open(debug_dir / f"{file_prefix}_error_attempt{attempt}.html", "w", encoding="utf-8") as f:
+                        f.write(page.content())
+                except Exception as e2:
+                    print(f"スクリーンショット/HTML保存にも失敗しました: {e2}")
+            else:
+                print("ブラウザ起動前の失敗のため、スクリーンショットは取得できません(エラーテキストのみ保存)")
+
+            if browser is not None:
+                try:
+                    browser.close()
+                except Exception:
+                    pass
 
     raise last_error
 
