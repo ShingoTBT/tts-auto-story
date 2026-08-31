@@ -17,3 +17,6 @@ image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 model: "claude-sonnet-4-6"
 recent_titles_count: 30
 zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"  # TikTok連携後にSecrets登録
+
+monitor_platform: "tiktok"  # 監視用: tiktok または threads
+monitor_max_interval_hours: 8  # これ以上投稿間隔が空いたら異常とみなす

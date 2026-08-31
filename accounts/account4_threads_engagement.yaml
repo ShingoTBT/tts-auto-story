@@ -13,3 +13,6 @@ zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT3"  # account3と同じZernioアカ�
 zernio_account_id_env: "ZERNIO_THREADS_ACCOUNT_ID_2"
 comment_threshold: 20
 comment_check_days: 4
+
+monitor_platform: "threads"  # 監視用: tiktok または threads
+monitor_max_interval_hours: 3  # これ以上投稿間隔が空いたら異常とみなす
