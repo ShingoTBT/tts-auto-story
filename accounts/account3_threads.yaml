@@ -17,3 +17,4 @@ comment_check_days: 4  # 当日〜3日前までをチェック対象にする
 
 monitor_platform: "threads"  # 監視用: tiktok または threads
 monitor_max_interval_hours: 3  # これ以上投稿間隔が空いたら異常とみなす
+monitor_recovery_workflow: "account3_threads_post.yaml"  # 停滞検知時に自動再実行するワークフロー

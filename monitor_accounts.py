@@ -22,6 +22,11 @@ import requests
 import yaml
 
 CHATWORK_API_BASE = "https://api.chatwork.com/v2"
+GITHUB_API_BASE = "https://api.github.com"
+GITHUB_OWNER = "ShingoTBT"
+GITHUB_REPO = "tts-auto-story"
+RECOVERY_STATE_PATH = Path("outputs/monitor_recovery_state.json")
+RECOVERY_COOLDOWN_HOURS = 4  # 同じアカウントへの自動再実行は、この時間は連続で行わない
 
 
 def load_account_config(config_path: str) -> dict:
@@ -85,6 +90,47 @@ def send_chatwork_alert(token: str, room_id: str, body: str) -> None:
     r.raise_for_status()
 
 
+def load_recovery_state() -> dict:
+    if not RECOVERY_STATE_PATH.exists():
+        return {}
+    try:
+        with open(RECOVERY_STATE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_recovery_state(state: dict) -> None:
+    RECOVERY_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(RECOVERY_STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def can_attempt_recovery(state: dict, account_name: str) -> bool:
+    last_attempt_str = state.get(account_name)
+    if not last_attempt_str:
+        return True
+    last_attempt = datetime.datetime.fromisoformat(last_attempt_str)
+    elapsed_hours = (datetime.datetime.now() - last_attempt).total_seconds() / 3600
+    return elapsed_hours >= RECOVERY_COOLDOWN_HOURS
+
+
+def trigger_workflow_dispatch(dispatch_token: str, workflow_file: str) -> bool:
+    """指定したワークフローをworkflow_dispatchで再実行する"""
+    url = f"{GITHUB_API_BASE}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/actions/workflows/{workflow_file}/dispatches"
+    headers = {
+        "Authorization": f"Bearer {dispatch_token}",
+        "Accept": "application/vnd.github+json",
+    }
+    try:
+        r = requests.post(url, headers=headers, json={"ref": "main"}, timeout=20)
+        r.raise_for_status()
+        return True
+    except Exception as e:
+        print(f"  再実行トリガーエラー: {e}")
+        return False
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python monitor_accounts.py <account_config1.yaml> [account_config2.yaml ...]")
@@ -93,12 +139,16 @@ def main():
     now = datetime.datetime.now()
     stalled = []
     ok_accounts = []
+    recovery_state = load_recovery_state()
+    dispatch_token = os.environ.get("GH_DISPATCH_TOKEN")
 
     for config_path in sys.argv[1:]:
         config = load_account_config(config_path)
         label = config.get("chatwork_label", config.get("display_name", config["account_name"]))
+        account_name = config["account_name"]
         platform = config.get("monitor_platform", "tiktok")
         max_hours = config.get("monitor_max_interval_hours", 8)
+        recovery_workflow = config.get("monitor_recovery_workflow")
 
         if platform == "threads":
             last_time = get_last_post_time_threads(config)
@@ -106,27 +156,56 @@ def main():
             last_time = get_last_post_time_tiktok(config)
 
         if last_time is None:
-            stalled.append((label, "投稿記録が一件も見つかりません"))
+            elapsed_hours = None
+            is_stalled = True
+            reason = "投稿記録が一件も見つかりません"
             print(f"{label}: 投稿記録なし")
+        else:
+            elapsed_hours = (now - last_time).total_seconds() / 3600
+            is_stalled = elapsed_hours > max_hours
+            reason = f"最終投稿から{elapsed_hours:.1f}時間経過(基準{max_hours}時間)"
+            print(f"{label}: 最終投稿={last_time.isoformat()} ({elapsed_hours:.1f}時間前, 基準={max_hours}h)")
+
+        if not is_stalled:
+            ok_accounts.append(label)
             continue
 
-        elapsed_hours = (now - last_time).total_seconds() / 3600
-        print(f"{label}: 最終投稿={last_time.isoformat()} ({elapsed_hours:.1f}時間前, 基準={max_hours}h)")
-
-        if elapsed_hours > max_hours:
-            stalled.append((label, f"最終投稿から{elapsed_hours:.1f}時間経過(基準{max_hours}時間)"))
+        # 自動復旧を試みる(クールダウン期間内は再試行しない)
+        recovery_note = ""
+        if recovery_workflow and dispatch_token:
+            if can_attempt_recovery(recovery_state, account_name):
+                print(f"  自動復旧を試みます: {recovery_workflow}")
+                success = trigger_workflow_dispatch(dispatch_token, recovery_workflow)
+                recovery_state[account_name] = now.isoformat()
+                recovery_note = (
+                    "自動で再実行をトリガーしました。数分後に結果をご確認ください。"
+                    if success
+                    else "自動再実行のトリガーに失敗しました。"
+                )
+            else:
+                last_attempt = datetime.datetime.fromisoformat(recovery_state[account_name])
+                cooldown_remaining = RECOVERY_COOLDOWN_HOURS - (now - last_attempt).total_seconds() / 3600
+                recovery_note = (
+                    f"直近{RECOVERY_COOLDOWN_HOURS}時間以内に自動再実行を試みたため、"
+                    f"今回はスキップしました(あと約{cooldown_remaining:.1f}時間で再試行可能)。"
+                )
         else:
-            ok_accounts.append(label)
+            recovery_note = "自動復旧の設定がないため、手動確認が必要です。"
+
+        stalled.append((label, reason, recovery_note))
+
+    save_recovery_state(recovery_state)
 
     if stalled:
         lines = ["＝＝＝＝＝⚠️投稿停滞アラート＝＝＝＝＝"]
         lines.append(f"{now.strftime('%Y年%m月%d日 %H:%M')}時点")
         lines.append("")
         lines.append("以下のアカウントで、想定より投稿間隔が空いています。")
-        for label, reason in stalled:
+        for label, reason, recovery_note in stalled:
             lines.append(f"・{label}：{reason}")
+            lines.append(f"　→ {recovery_note}")
         lines.append("")
-        lines.append("ワークフローの実行履歴を確認してください。")
+        lines.append("自動再実行後もこの通知が続く場合は、コードの調査が必要な可能性があります。")
         lines.append("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
         message = "\n".join(lines)
 

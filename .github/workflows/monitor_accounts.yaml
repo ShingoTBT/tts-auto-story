@@ -14,6 +14,8 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,6 +27,7 @@ jobs:
         env:
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+          GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: >
           python monitor_accounts.py
           accounts/account1_emotional.yaml
@@ -32,3 +35,15 @@ jobs:
           accounts/account3_threads.yaml
           accounts/account4_threads_engagement.yaml
           accounts/account5_tiktok_engagement.yaml
+
+      - name: Commit recovery state
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/monitor_recovery_state.json
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: update monitor recovery state"
+            git pull --rebase origin main
+            git push
+          fi

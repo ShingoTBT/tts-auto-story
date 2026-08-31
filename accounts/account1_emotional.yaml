@@ -18,3 +18,4 @@ zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID"
 
 monitor_platform: "tiktok"  # 監視用: tiktok または threads
 monitor_max_interval_hours: 10  # これ以上投稿間隔が空いたら異常とみなす
+monitor_recovery_workflow: "account1_emotional.yaml"  # 停滞検知時に自動再実行するワークフロー
