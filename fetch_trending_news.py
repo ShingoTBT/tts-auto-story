@@ -192,10 +192,12 @@ def main():
         print(f"今回はGoogleトレンドを使用します(google_trend_ratio={google_ratio})")
         print("Googleトレンドを取得中...")
         trend_items = fetch_trend_items()
+        source_type = "google"
     else:
         print(f"今回ははてなブックマークを使用します(google_trend_ratio={google_ratio})")
         print("はてなブックマークの人気エントリーを取得中...")
         trend_items = fetch_hatena_items()
+        source_type = "hatena"
 
     print(f"{len(trend_items)}件の候補を取得しました")
 
@@ -222,7 +224,9 @@ def main():
             print("  文字数不足のためスキップ")
             continue
 
-        if not is_relevant(keyword, article_text):
+        # はてなブックマークは「キーワード=記事タイトルそのもの(同一記事)」なので、
+        # Googleトレンド用に作られた関連性チェックは不要(むしろ誤判定の原因になる)
+        if source_type == "google" and not is_relevant(keyword, article_text):
             print("  抽出内容がキーワードと無関係(記事抽出の失敗)の可能性が高いためスキップ")
             continue
 
