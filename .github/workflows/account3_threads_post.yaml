@@ -26,18 +26,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Fetch trending news candidate
-        id: fetch
-        continue-on-error: true
-        run: python fetch_trending_news.py accounts/account3_threads.yaml
-
       - name: Generate Threads post
         id: generate
-        if: steps.fetch.outcome == 'success'
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python generate_threads_post.py accounts/account3_threads.yaml
+        run: python generate_threads_engagement.py accounts/account3_threads.yaml
 
       - name: Post to Threads via Zernio
         if: steps.generate.outcome == 'success'

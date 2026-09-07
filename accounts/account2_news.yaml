@@ -1,12 +1,10 @@
-account_name: "account2_news"
-display_name: "話題のニュース_アカウント2"
-chatwork_label: "話題のニュース_アカウント2"
+account_name: "account2_career"
+display_name: "転職あるある_アカウント2"
+chatwork_label: "転職あるある_アカウント2"
 tiktok_url: "https://tiktok.com/@user8258702569269"
-prompt_file: "prompts/news_v1.md"
-titles_log_file: "logs/account2_news_titles.jsonl"
-google_trend_ratio: 0.0  # 0.0=はてな100%, 1.0=Google100%, 0.5=半々
-output_dir: "outputs/account2_news"
-notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
+prompt_file: "prompts/tiktok_career_v1.md"
+titles_log_file: "logs/account2_career_titles.jsonl"
+output_dir: "outputs/account2_career"
 schedule_jst:
   - "01:00"
   - "06:00"
@@ -14,9 +12,12 @@ schedule_jst:
   - "16:00"
   - "21:00"
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+image_count: 2
+min_chars: 320
+max_chars: 380
 model: "claude-sonnet-4-6"
 recent_titles_count: 30
-zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"  # TikTok連携後にSecrets登録
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"
 
 monitor_platform: "tiktok"  # 監視用: tiktok または threads
 monitor_max_interval_hours: 8  # これ以上投稿間隔が空いたら異常とみなす
