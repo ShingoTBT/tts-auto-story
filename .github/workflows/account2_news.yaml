@@ -57,12 +57,18 @@ jobs:
           sudo cp fontconfig/local.conf /etc/fonts/local.conf
           sudo fc-cache -f
 
-      - name: Generate career story
+      - name: Fetch trending news candidate
+        id: fetch
+        continue-on-error: true
+        run: python fetch_trending_news.py accounts/account2_news.yaml
+
+      - name: Generate news story
         id: generate
+        if: steps.fetch.outcome == 'success'
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python generate_tiktok_engagement.py accounts/account2_news.yaml
+        run: python generate_news.py accounts/account2_news.yaml
 
       - name: Render images via existing tool
         if: steps.generate.outcome == 'success'

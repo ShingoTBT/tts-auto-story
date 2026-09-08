@@ -58,7 +58,7 @@ jobs:
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python generate.py accounts/account1_emotional.yaml
+        run: python generate_tiktok_engagement.py accounts/account1_emotional.yaml
 
       - name: Render images via existing tool
         if: steps.generate.outcome == 'success'
