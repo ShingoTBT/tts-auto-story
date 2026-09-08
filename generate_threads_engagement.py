@@ -10,6 +10,7 @@ threads_engagement_v1.mdプロンプトで、共感/議論を呼ぶ創作エピ�
 import sys
 import os
 import re
+import random
 import datetime
 from pathlib import Path
 
@@ -29,8 +30,18 @@ def load_account_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
-def build_user_message(recent_titles: list[str]) -> str:
-    base = "指定要件を厳守して、共感/議論を呼ぶ投稿を1本、創作してください。"
+def build_user_message(recent_titles: list[str], topic_categories: list[str] = None) -> str:
+    if topic_categories:
+        # コード側で明示的にテーマをランダム選択する
+        # (AI任せのランダム選択だと1つのテーマに偏る傾向があるため)
+        topic = random.choice(topic_categories)
+        base = (
+            "指定要件を厳守して、共感/議論を呼ぶ投稿を1本、創作してください。\n\n"
+            f"今回は【{topic}】というテーマで書いてください。"
+        )
+    else:
+        base = "指定要件を厳守して、共感/議論を呼ぶ投稿を1本、創作してください。"
+
     if recent_titles:
         titles_block = "\n".join(f"- {t}" for t in recent_titles)
         base += (
@@ -86,7 +97,8 @@ def main():
     recent_titles = load_recent_titles(
         config["titles_log_file"], config.get("recent_titles_count", 30)
     )
-    user_message = build_user_message(recent_titles)
+    topic_categories = config.get("topic_categories")
+    user_message = build_user_message(recent_titles, topic_categories)
 
     min_chars = config.get("min_chars", 200)
     max_chars = config.get("max_chars", 300)
