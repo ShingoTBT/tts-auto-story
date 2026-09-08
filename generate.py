@@ -31,11 +31,26 @@ def strip_meta_commentary(text: str) -> str:
     AIが誤って出力に混入させがちな、自己チェック・メタ情報を除去する安全策。
     - [info]...[/info] のようなブロック
     - "文字数確認" を含む行
-    - チェックマーク(✅)を含む行
+    - チェックマーク(✅❌)を含む行
     - "---" のみの区切り線
+    - 「今回は〜の切り口で作成します」のような、話題選定の前置き・独り言
     """
     # [xxx]...[/xxx] 形式のブロックを除去(info/note/check等、名前を問わず)
     text = re.sub(r"\[(\w+)\][\s\S]*?\[/\1\]", "", text, flags=re.IGNORECASE)
+
+    # 「話題は直近で使用済みなので、今回は〜の切り口で作成します」のような、
+    # 話題選定の説明・前置き文を、段落単位で除去する
+    # (「今回は」「作成します」「書きます」「使用済み」等、メタ的な単語の組み合わせで判定)
+    paragraphs = text.split("\n\n")
+    filtered_paragraphs = []
+    meta_intro_markers = ["作成します", "書きます」", "投稿を作成", "使用済みなので", "の切り口で", "重複を避け"]
+    for i, para in enumerate(paragraphs):
+        para_stripped = para.strip()
+        # 最初の1〜2段落のみ対象(本文中に紛れ込んだ通常の文章を誤検知しないため)
+        if i <= 1 and any(marker in para_stripped for marker in meta_intro_markers) and "今回は" in para_stripped:
+            continue
+        filtered_paragraphs.append(para)
+    text = "\n\n".join(filtered_paragraphs)
 
     lines = text.split("\n")
     cleaned = []
