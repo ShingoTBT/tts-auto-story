@@ -24,7 +24,12 @@ def load_account_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
-def build_user_message(recent_titles: list[str], content_pattern_count: int = 0) -> str:
+def build_user_message(
+    recent_titles: list[str],
+    content_pattern_count: int = 0,
+    special_pattern_name: str = None,
+    special_pattern_probability: float = 0.0,
+) -> str:
     if content_pattern_count > 0:
         # コード側で明示的にパターン番号をランダム選択する
         # (AI任せのランダム選択だと1つの型に偏る傾向があるため)
@@ -33,17 +38,16 @@ def build_user_message(recent_titles: list[str], content_pattern_count: int = 0)
             "指定要件・出力フォーマットを厳守して、投稿を1本作成してください。\n\n"
             f"今回は【パターン{pattern_num}】を使って書いてください。"
         )
+    elif special_pattern_name and random.random() < special_pattern_probability:
+        base = (
+            "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。\n\n"
+            f"今回は【{special_pattern_name}】を使って書いてください。"
+        )
     else:
-        # 一定確率(30%)で「30代主婦×家族系の悩み×賛否両論型」の特別パターンを指定する
-        use_special_pattern = random.random() < 0.3
-
-        if use_special_pattern:
-            base = (
-                "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。\n\n"
-                "今回は【2.5 特別パターン：30代主婦×家族系の悩み×賛否両論型】を使って書いてください。"
-            )
-        else:
-            base = "指定要件・出力フォーマットを厳守して、共感/議論を呼ぶ投稿を1本、創作してください。"
+        base = (
+            "指定要件・出力フォーマットを厳守して、投稿を1本作成してください。\n"
+            "毎回同じ切り口に偏らず、その回にふさわしい新しいテーマ・視点を考えてください。"
+        )
 
     if recent_titles:
         titles_block = "\n".join(f"- {t}" for t in recent_titles)
@@ -106,7 +110,11 @@ def main():
         config["titles_log_file"], config.get("recent_titles_count", 30)
     )
     content_pattern_count = config.get("content_pattern_count", 0)
-    user_message = build_user_message(recent_titles, content_pattern_count)
+    special_pattern_name = config.get("special_pattern_name")
+    special_pattern_probability = config.get("special_pattern_probability", 0.0)
+    user_message = build_user_message(
+        recent_titles, content_pattern_count, special_pattern_name, special_pattern_probability
+    )
 
     min_chars = config.get("min_chars", 200)
     max_chars = config.get("max_chars", 260)

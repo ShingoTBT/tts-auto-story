@@ -3,7 +3,7 @@ display_name: "転職あるある_アカウント1"
 chatwork_label: "転職あるある_アカウント1"
 tiktok_url: "https://tiktok.com/@user2804137174301"
 prompt_file: "prompts/tiktok_career_v1.md"
-content_pattern_count: 4  # パターン1〜4からランダムに選択
+content_pattern_count: 0  # 0=固定パターンなし。AIが投稿ごとに自由に切り口を考える
 titles_log_file: "logs/account1_career_titles.jsonl"
 output_dir: "outputs/account1_career"
 schedule_jst:
