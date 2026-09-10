@@ -14,7 +14,7 @@ from pathlib import Path
 
 import requests
 
-from report_followers import load_account_config, get_follower_count
+from report_followers import load_account_config, get_follower_count, get_follower_count_with_delta
 from check_and_reply_comments import (
     load_posted_threads,
     is_within_check_window,
@@ -59,8 +59,14 @@ def build_follower_report(tiktok_configs: list[str], timestamp_str: str) -> str:
             continue
 
         try:
-            count = get_follower_count(api_key, account_id)
-            lines.append(f"・{label}：{count if count is not None else '取得失敗'}人")
+            count, delta = get_follower_count_with_delta(api_key, account_id)
+            if count is None:
+                lines.append(f"・{label}：取得失敗")
+            elif delta is None:
+                lines.append(f"・{label}：{count}人")
+            else:
+                sign = "+" if delta >= 0 else ""
+                lines.append(f"・{label}：{count}人【前日{sign}{delta}】")
         except Exception as e:
             print(f"エラー({label}): {e}")
             lines.append(f"・{label}：取得エラー")

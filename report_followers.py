@@ -54,6 +54,47 @@ def get_follower_count(api_key: str, account_id: str):
     return None
 
 
+def get_follower_count_with_delta(api_key: str, account_id: str):
+    """
+    現在のフォロワー数と、前日からの増減を取得する。
+    戻り値: (現在のフォロワー数, 前日比の増減数 または None)
+    """
+    headers = {"Authorization": f"Bearer {api_key}"}
+    today = datetime.date.today()
+    from_date = (today - datetime.timedelta(days=3)).isoformat()
+    to_date = today.isoformat()
+    params = {
+        "accountIds": account_id,
+        "fromDate": from_date,
+        "toDate": to_date,
+        "granularity": "daily",
+    }
+    r = requests.get(
+        f"{ZERNIO_API_BASE}/accounts/follower-stats",
+        headers=headers,
+        params=params,
+        timeout=20,
+    )
+    r.raise_for_status()
+    data = r.json()
+    accounts = data.get("accounts", [])
+    current = accounts[0].get("currentFollowers") if accounts else None
+
+    stats = data.get("stats", {})
+    daily = stats.get(account_id, [])
+    # 日付でソートし、直近2件(前日・当日)を見る
+    daily_sorted = sorted(daily, key=lambda x: x["date"])
+
+    delta = None
+    if len(daily_sorted) >= 2:
+        yesterday_count = daily_sorted[-2].get("followers")
+        today_count = daily_sorted[-1].get("followers")
+        if yesterday_count is not None and today_count is not None:
+            delta = today_count - yesterday_count
+
+    return current, delta
+
+
 def send_chatwork_message(token: str, room_id: str, body: str) -> None:
     r = requests.post(
         f"{CHATWORK_API_BASE}/rooms/{room_id}/messages",
