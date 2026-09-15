@@ -2,12 +2,15 @@ name: account1_emotional_story
 
 on:
   schedule:
-    # 毎朝6:00 JST = 前日21:00 UTC
-    - cron: "0 21 * * *"
-    # 正午12:00 JST = 03:00 UTC
-    - cron: "0 3 * * *"
-    # 18:00 JST = 09:00 UTC
-    - cron: "0 9 * * *"
+    # ルートバズ推奨:転職ジャンルの投稿時間帯
+    # 平日 5:30 JST = 前日20:30 UTC (日〜木 20:30 UTC)
+    - cron: "30 20 * * 0,1,2,3,4"
+    # 平日 10:00 JST = 01:00 UTC (月〜金)
+    - cron: "0 1 * * 1,2,3,4,5"
+    # 平日 18:00 JST = 09:00 UTC (月〜金)
+    - cron: "0 9 * * 1,2,3,4,5"
+    # 週末(土日) 7:00 JST = 前日22:00 UTC (金・土 22:00 UTC)
+    - cron: "0 22 * * 5,6"
   workflow_dispatch: {}  # 手動実行もできるようにしておく
 
 concurrency:

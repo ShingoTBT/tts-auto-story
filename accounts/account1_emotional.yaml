@@ -4,12 +4,15 @@ chatwork_label: "転職あるある_アカウント1"
 tiktok_url: "https://tiktok.com/@user2804137174301"
 prompt_file: "prompts/tiktok_career_v1.md"
 content_pattern_count: 0  # 0=固定パターンなし。AIが投稿ごとに自由に切り口を考える
+use_follow_phase: true  # フォロワー数に応じて締めを自動切り替え(1000人未満=フォロー訴求, 以上=リンク誘導)
+follower_threshold: 1000
 titles_log_file: "logs/account1_career_titles.jsonl"
 output_dir: "outputs/account1_career"
 schedule_jst:
-  - "06:00"
-  - "12:00"
-  - "18:00"
+  - "05:30(平日)"
+  - "10:00(平日)"
+  - "18:00(平日)"
+  - "07:00(週末)"
 # 画像化ツール（Puppeteerで自動操作する既存index.phpのURL）
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 image_count: 2

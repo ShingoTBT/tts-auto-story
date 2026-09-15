@@ -24,11 +24,38 @@ def load_account_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
+def get_follow_phase(config: dict) -> str:
+    """
+    フォロワー数を確認し、「フォロー訴求フェーズ」か「リンク誘導フェーズ」かを判定する。
+    follower_threshold(デフォルト1000)未満なら follow、以上なら link を返す。
+    account_id_env が未設定、または取得に失敗した場合は None を返す(締め方の指定なしにする)。
+    """
+    account_id_env = config.get("zernio_account_id_env")
+    if not account_id_env:
+        return None
+    account_id = os.environ.get(account_id_env)
+    api_key = os.environ.get(config.get("zernio_api_key_env", "ZERNIO_API_KEY"))
+    if not account_id or not api_key:
+        return None
+
+    try:
+        from report_followers import get_follower_count
+        count = get_follower_count(api_key, account_id)
+        if count is None:
+            return None
+        threshold = config.get("follower_threshold", 1000)
+        return "link" if count >= threshold else "follow"
+    except Exception as e:
+        print(f"フォロワー数取得エラー(締め方の指定なしで続行): {e}")
+        return None
+
+
 def build_user_message(
     recent_titles: list[str],
     content_pattern_count: int = 0,
     special_pattern_name: str = None,
     special_pattern_probability: float = 0.0,
+    follow_phase: str = None,
 ) -> str:
     if content_pattern_count > 0:
         # コード側で明示的にパターン番号をランダム選択する
@@ -48,6 +75,11 @@ def build_user_message(
             "指定要件・出力フォーマットを厳守して、投稿を1本作成してください。\n"
             "毎回同じ切り口に偏らず、その回にふさわしい新しいテーマ・視点を考えてください。"
         )
+
+    if follow_phase == "follow":
+        base += "\n\n締めは【7.5 フォロー訴求フェーズ】の指定に従ってください。"
+    elif follow_phase == "link":
+        base += "\n\n締めは【7.5 リンク誘導フェーズ】の指定に従ってください。"
 
     if recent_titles:
         titles_block = "\n".join(f"- {t}" for t in recent_titles)
@@ -112,8 +144,11 @@ def main():
     content_pattern_count = config.get("content_pattern_count", 0)
     special_pattern_name = config.get("special_pattern_name")
     special_pattern_probability = config.get("special_pattern_probability", 0.0)
+    follow_phase = get_follow_phase(config) if config.get("use_follow_phase") else None
+    if follow_phase:
+        print(f"フォロワー数フェーズ: {follow_phase}")
     user_message = build_user_message(
-        recent_titles, content_pattern_count, special_pattern_name, special_pattern_probability
+        recent_titles, content_pattern_count, special_pattern_name, special_pattern_probability, follow_phase
     )
 
     min_chars = config.get("min_chars", 200)
