@@ -35,6 +35,7 @@ jobs:
           accounts/account3_threads.yaml
           accounts/account4_threads_engagement.yaml
           accounts/account5_tiktok_engagement.yaml
+          accounts/account6_tiktok_engagement.yaml
 
       - name: Commit recovery state
         if: always()
