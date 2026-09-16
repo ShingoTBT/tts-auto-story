@@ -1,0 +1,5 @@
+id=6a844d8977555aae01573d80, platform=tiktok, username=kyo5676
+id=6aaa83248d284ffb2107a56c, platform=tiktok, username=ddoo7901
+  -> ★これが指定されたID(6aaa83248d284ffb2107a56c)と一致
+
+一致するアカウントが見つかったか: True
