@@ -27,7 +27,9 @@ jobs:
         run: playwright install --with-deps chromium
       - name: Install Playwright OS dependencies only (cache hit)
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: playwright install-deps chromium
+        run: |
+          playwright install-deps chromium
+          playwright install chromium
       - name: Install Japanese fonts and configure aliases
         run: |
           sudo apt-get update
