@@ -131,6 +131,23 @@ def validate_output(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
 
 
 def main():
+    try:
+        _run()
+    except Exception:
+        import traceback
+        crash_log = traceback.format_exc()
+        print(crash_log)
+        try:
+            import os as _os
+            _os.makedirs("diagnostics", exist_ok=True)
+            with open("diagnostics/generate_tiktok_engagement_crash.txt", "w", encoding="utf-8") as f:
+                f.write(crash_log)
+        except Exception:
+            pass
+        raise
+
+
+def _run():
     if len(sys.argv) < 2:
         print("使い方: python generate_tiktok_engagement.py <account_config.yaml>")
         sys.exit(1)

@@ -120,6 +120,23 @@ def validate_casual_tone(text: str) -> tuple[bool, str]:
 
 
 def main():
+    try:
+        _run()
+    except Exception:
+        import traceback
+        crash_log = traceback.format_exc()
+        print(crash_log)
+        try:
+            import os as _os
+            _os.makedirs("diagnostics", exist_ok=True)
+            with open("diagnostics/generate_news_crash.txt", "w", encoding="utf-8") as f:
+                f.write(crash_log)
+        except Exception:
+            pass
+        raise
+
+
+def _run():
     if len(sys.argv) < 2:
         print("使い方: python generate_news.py <account_config.yaml>")
         sys.exit(1)
