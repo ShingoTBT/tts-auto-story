@@ -31,6 +31,7 @@ jobs:
           ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
           ZERNIO_API_KEY_ACCOUNT5: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
           ZERNIO_TIKTOK_ACCOUNT_ID_3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
           ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
           ZERNIO_THREADS_ACCOUNT_ID: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID }}
           ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
@@ -38,5 +39,5 @@ jobs:
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: >
           python combined_report.py
-          --tiktok accounts/account1_emotional.yaml accounts/account2_news.yaml accounts/account5_tiktok_engagement.yaml
+          --tiktok accounts/account1_emotional.yaml accounts/account2_news.yaml accounts/account5_tiktok_engagement.yaml accounts/account6_tiktok_engagement.yaml
           --threads accounts/account3_threads.yaml accounts/account4_threads_engagement.yaml
