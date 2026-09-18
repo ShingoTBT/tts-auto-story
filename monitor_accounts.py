@@ -27,6 +27,18 @@ GITHUB_OWNER = "ShingoTBT"
 GITHUB_REPO = "tts-auto-story"
 RECOVERY_STATE_PATH = Path("outputs/monitor_recovery_state.json")
 RECOVERY_COOLDOWN_HOURS = 4  # 同じアカウントへの自動再実行は、この時間は連続で行わない
+CHATWORK_MY_ACCOUNT_ID = "237628"  # しんさんのChatWorkアカウントID(TO付き緊急通知用)
+
+# クレジット枯渇を検知するための、生成スクリプトのクラッシュログファイル一覧
+CRASH_LOG_FILES = [
+    "diagnostics/generate_tiktok_engagement_crash.txt",
+    "diagnostics/generate_threads_engagement_crash.txt",
+    "diagnostics/generate_threads_post_crash.txt",
+    "diagnostics/generate_news_crash.txt",
+]
+CREDIT_ERROR_MARKER = "credit balance is too low"
+CREDIT_ALERT_STATE_PATH = Path("outputs/monitor_credit_alert_state.json")
+CREDIT_ALERT_COOLDOWN_HOURS = 3  # クレジット枯渇の再通知間隔(直しても直後に別の失敗で連打しないため)
 
 
 def load_account_config(config_path: str) -> dict:
@@ -131,6 +143,68 @@ def trigger_workflow_dispatch(dispatch_token: str, workflow_file: str) -> bool:
         return False
 
 
+def check_credit_exhaustion() -> bool:
+    """
+    生成スクリプトのクラッシュログに、Anthropic APIのクレジット枯渇エラーが
+    含まれていないか確認する。
+    """
+    for path in CRASH_LOG_FILES:
+        p = Path(path)
+        if not p.exists():
+            continue
+        try:
+            content = p.read_text(encoding="utf-8")
+        except Exception:
+            continue
+        if CREDIT_ERROR_MARKER in content:
+            return True
+    return False
+
+
+def load_credit_alert_state() -> dict:
+    if not CREDIT_ALERT_STATE_PATH.exists():
+        return {}
+    try:
+        with open(CREDIT_ALERT_STATE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_credit_alert_state(state: dict) -> None:
+    CREDIT_ALERT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CREDIT_ALERT_STATE_PATH, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def send_credit_exhaustion_alert(token: str, room_id: str) -> None:
+    """クレジット枯渇を検知した場合、TO付きの緊急通知を送る"""
+    now = datetime.datetime.now()
+    state = load_credit_alert_state()
+    last_alert = state.get("last_alert")
+    if last_alert:
+        elapsed_hours = (now - datetime.datetime.fromisoformat(last_alert)).total_seconds() / 3600
+        if elapsed_hours < CREDIT_ALERT_COOLDOWN_HOURS:
+            print(f"クレジット枯渇アラートはクールダウン中です(あと約{CREDIT_ALERT_COOLDOWN_HOURS - elapsed_hours:.1f}時間)")
+            return
+
+    message = (
+        f"[To:{CHATWORK_MY_ACCOUNT_ID}]しんさん\n"
+        "＝＝＝＝＝🚨緊急：Anthropic APIクレジット枯渇＝＝＝＝＝\n"
+        f"{now.strftime('%Y年%m月%d日 %H:%M')}時点\n\n"
+        "コンテンツ生成に使っているAnthropic APIのクレジット残高が不足し、\n"
+        "全アカウントの投稿生成が停止しています。\n\n"
+        "以下から至急クレジットを追加してください:\n"
+        "https://console.anthropic.com/settings/billing\n\n"
+        "追加が完了次第、教えてください。止まっていた分の投稿をまとめて実行します。\n"
+        "＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+    )
+    send_chatwork_alert(token, room_id, message)
+    state["last_alert"] = now.isoformat()
+    save_credit_alert_state(state)
+    print("クレジット枯渇の緊急アラートを送信しました")
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python monitor_accounts.py <account_config1.yaml> [account_config2.yaml ...]")
@@ -141,6 +215,13 @@ def main():
     ok_accounts = []
     recovery_state = load_recovery_state()
     dispatch_token = os.environ.get("GH_DISPATCH_TOKEN")
+
+    # クレジット枯渇の検知(最優先。検知したら即TO付き緊急通知)
+    cw_token = os.environ["CHATWORK_API_TOKEN"]
+    cw_room = os.environ["CHATWORK_ROOM_ID"]
+    if check_credit_exhaustion():
+        print("⚠️ Anthropic APIのクレジット枯渇を検知しました")
+        send_credit_exhaustion_alert(cw_token, cw_room)
 
     for config_path in sys.argv[1:]:
         config = load_account_config(config_path)

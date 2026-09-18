@@ -89,6 +89,14 @@ def summarize_for_dedup(text: str, model: str) -> str:
 def main():
     try:
         _run()
+        # 成功したので、過去のクラッシュログが残っていれば削除する
+        # (残ったままだと、直った後も監視側が誤って「クレジット枯渇中」と判定し続けてしまうため)
+        try:
+            crash_path = Path("diagnostics/generate_threads_engagement_crash.txt")
+            if crash_path.exists():
+                crash_path.unlink()
+        except Exception:
+            pass
     except Exception:
         import traceback
         crash_log = traceback.format_exc()
