@@ -166,6 +166,16 @@ def _run():
     recent_titles = load_recent_titles(
         config["titles_log_file"], config.get("recent_titles_count", 30)
     )
+
+    # 姉妹アカウント(同じプロンプトを使う別アカウント)の直近タイトルも読み込み、
+    # 重複防止の指示に含める(お互いを一切見ずに生成される事故を防ぐため)
+    sibling_titles = []
+    for sibling_log in config.get("sibling_titles_log_files", []):
+        sibling_titles.extend(
+            load_recent_titles(sibling_log, config.get("recent_titles_count", 30))
+        )
+    combined_recent_titles = recent_titles + sibling_titles
+
     content_pattern_count = config.get("content_pattern_count", 0)
     special_pattern_name = config.get("special_pattern_name")
     special_pattern_probability = config.get("special_pattern_probability", 0.0)
@@ -173,7 +183,7 @@ def _run():
     if follow_phase:
         print(f"フォロワー数フェーズ: {follow_phase}")
     user_message = build_user_message(
-        recent_titles, content_pattern_count, special_pattern_name, special_pattern_probability, follow_phase
+        combined_recent_titles, content_pattern_count, special_pattern_name, special_pattern_probability, follow_phase
     )
 
     min_chars = config.get("min_chars", 200)
@@ -197,6 +207,15 @@ def _run():
         output_text = "\n".join(lines)
 
         is_valid, msg = validate_output(output_text, min_chars, max_chars)
+
+        if is_valid and sibling_titles:
+            # 姉妹アカウントの直近タイトルと完全一致していないか、機械的に確認する
+            # (AIの注意だけに頼らず、確実に重複を防ぐための最終防衛線)
+            new_title = extract_title(output_text)
+            if new_title and new_title in sibling_titles:
+                is_valid = False
+                msg = f"姉妹アカウントの投稿とタイトルが完全一致({new_title})のため、リトライします"
+
         if is_valid:
             break
         print(f"[試行{attempt}] {msg}")
