@@ -1,0 +1,20 @@
+account_name: "account6_emotional"
+display_name: "涙あふれるストーリー_アカウント6(TikTok)"
+chatwork_label: "涙あふれるストーリー_アカウント6(TikTok)"
+tiktok_url: "https://tiktok.com/@ddoo7901"
+prompt_file: "prompts/emotional_story_v3.md"
+titles_log_file: "logs/account6_emotional_titles.jsonl"
+output_dir: "outputs/account6_tiktok"
+schedule_jst:
+  - "01:00"
+  - "07:00"
+  - "16:00"
+image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT5"
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_6"
+
+monitor_platform: "tiktok"
+monitor_max_interval_hours: 5
+monitor_recovery_workflow: "account6_tiktok_engagement.yaml"

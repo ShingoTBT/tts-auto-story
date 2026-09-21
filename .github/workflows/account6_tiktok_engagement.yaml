@@ -65,16 +65,29 @@ jobs:
           sudo cp fontconfig/local.conf /etc/fonts/local.conf
           sudo fc-cache -f
 
+      - name: Determine which content type to generate based on trigger time
+        id: pick_config
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          echo "matched cron: $SCHEDULE"
+          if [ "$SCHEDULE" = "0 16 * * *" ] || [ "$SCHEDULE" = "0 22 * * *" ] || [ "$SCHEDULE" = "0 7 * * *" ]; then
+            echo "config_path=accounts/account6_emotional.yaml" >> "$GITHUB_OUTPUT"
+            echo "generator_script=generate.py" >> "$GITHUB_OUTPUT"
+          else
+            echo "config_path=accounts/account6_tiktok_engagement.yaml" >> "$GITHUB_OUTPUT"
+            echo "generator_script=generate_tiktok_engagement.py" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Generate post
         id: generate
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python generate_tiktok_engagement.py accounts/account6_tiktok_engagement.yaml
+        run: python ${{ steps.pick_config.outputs.generator_script }} ${{ steps.pick_config.outputs.config_path }}
 
       - name: Render image via existing tool
         if: steps.generate.outcome == 'success'
-        run: python render_images.py accounts/account6_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+        run: python render_images.py ${{ steps.pick_config.outputs.config_path }} "${{ steps.generate.outputs.output_path }}"
 
       - name: Commit and push generated content (image must be public before posting)
         if: steps.generate.outcome == 'success'
@@ -95,14 +108,14 @@ jobs:
         env:
           ZERNIO_API_KEY_ACCOUNT5: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
           ZERNIO_TIKTOK_ACCOUNT_ID_6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
-        run: python post_to_tiktok.py accounts/account6_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+        run: python post_to_tiktok.py ${{ steps.pick_config.outputs.config_path }} "${{ steps.generate.outputs.output_path }}"
 
       - name: Notify ChatWork
         if: steps.generate.outcome == 'success'
         env:
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
-        run: python notify_chatwork.py accounts/account6_tiktok_engagement.yaml "${{ steps.generate.outputs.output_path }}"
+        run: python notify_chatwork.py ${{ steps.pick_config.outputs.config_path }} "${{ steps.generate.outputs.output_path }}"
 
       - name: Commit any remaining changes (e.g. error debug files)
         if: always()
