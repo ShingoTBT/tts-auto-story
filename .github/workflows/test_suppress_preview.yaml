@@ -20,7 +20,7 @@ jobs:
         env:
           ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
           ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
-        run: python diagnostics/test_suppress_preview.py 2>&1 | tee diagnostics/test_suppress_preview_result.txt
+        run: python diagnostics/check_test_comment.py 2>&1 | tee diagnostics/test_suppress_preview_result.txt
       - name: Commit result
         if: always()
         run: |
