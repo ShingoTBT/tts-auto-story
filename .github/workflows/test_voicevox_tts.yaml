@@ -1,0 +1,72 @@
+name: test_voicevox_tts
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      voicevox:
+        image: voicevox/voicevox_engine:cpu-ubuntu20.04-latest
+        ports:
+          - 50021:50021
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for VOICEVOX engine to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -s http://localhost:50021/version > /dev/null; then
+              echo "VOICEVOX起動確認OK"
+              curl -s http://localhost:50021/version
+              break
+            fi
+            echo "起動待ち... ($i)"
+            sleep 2
+          done
+
+      - name: List available speakers
+        run: |
+          curl -s http://localhost:50021/speakers | python3 -m json.tool | head -50
+
+      - name: Synthesize test Japanese narration
+        run: |
+          mkdir -p outputs/voicevox_test
+          TEXT="転職活動中、この特徴がある会社は要注意です。面接官が終始不機嫌、または質問に曖昧にしか答えない場合は気をつけましょう。"
+          echo -n "$TEXT" > outputs/voicevox_test/text.txt
+
+          curl -s -X POST \
+            "http://localhost:50021/audio_query?speaker=3" \
+            --get --data-urlencode text@outputs/voicevox_test/text.txt \
+            -H "Content-Type: application/json" \
+            > outputs/voicevox_test/query.json
+
+          echo "=== audio_query結果(冒頭) ==="
+          head -c 500 outputs/voicevox_test/query.json
+          echo ""
+
+          curl -s \
+            -H "Content-Type: application/json" \
+            -X POST \
+            -d @outputs/voicevox_test/query.json \
+            "http://localhost:50021/synthesis?speaker=3" \
+            > outputs/voicevox_test/narration.wav
+
+          ls -la outputs/voicevox_test/
+          file outputs/voicevox_test/narration.wav
+
+      - name: Commit test audio
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/voicevox_test/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: voicevox tts test output"
+            git pull --rebase origin main
+            git push
+          fi
