@@ -1,0 +1,34 @@
+name: test_suppress_preview
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Test suppress_preview parameter
+        env:
+          ZERNIO_API_KEY_ACCOUNT3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT3 }}
+          ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
+        run: python diagnostics/test_suppress_preview.py 2>&1 | tee diagnostics/test_suppress_preview_result.txt
+      - name: Commit result
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/
+          if ! git diff --staged --quiet; then
+            git commit -m "chore: suppress_preview test result"
+            git pull --rebase origin main
+            git push
+          fi
