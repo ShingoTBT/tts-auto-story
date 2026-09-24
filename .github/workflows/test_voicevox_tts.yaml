@@ -64,9 +64,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          ls -la outputs/voicevox_test/ || echo "フォルダが存在しません"
+          git status
           git add outputs/voicevox_test/
+          git status
           if ! git diff --staged --quiet; then
             git commit -m "chore: voicevox tts test output"
             git pull --rebase origin main
             git push
+          else
+            echo "コミット対象の変更なし"
           fi
