@@ -97,8 +97,20 @@ jobs:
           git add logs/ outputs/ diagnostics/ overrides/
           if ! git diff --staged --quiet; then
             git commit -m "chore: account6 tiktok post ($(date +'%Y-%m-%d %H:%M'))"
-            git pull --rebase origin main
-            git push
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase origin main && git push; then
+                pushed=1
+                break
+              fi
+              echo "push attempt $i failed, retrying..."
+              git rebase --abort 2>/dev/null || true
+              sleep $((RANDOM % 5 + 1))
+            done
+            if [ "$pushed" -ne 1 ]; then
+              echo "::error::failed to push account6 post after retries"
+              exit 1
+            fi
           fi
 
       - name: Post to TikTok via Zernio
@@ -125,6 +137,18 @@ jobs:
           git add logs/ outputs/ diagnostics/ overrides/
           if ! git diff --staged --quiet; then
             git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))"
-            git pull --rebase origin main
-            git push
+            pushed=0
+            for i in 1 2 3 4 5; do
+              if git pull --rebase origin main && git push; then
+                pushed=1
+                break
+              fi
+              echo "push attempt $i failed, retrying..."
+              git rebase --abort 2>/dev/null || true
+              sleep $((RANDOM % 5 + 1))
+            done
+            if [ "$pushed" -ne 1 ]; then
+              echo "::error::failed to push account6 cleanup after retries"
+              exit 1
+            fi
           fi

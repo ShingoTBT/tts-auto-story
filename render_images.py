@@ -9,6 +9,7 @@ generate.pyが出力したテキストファイルを、既存のTikTok感動ス
 """
 
 import sys
+import time
 import base64
 from pathlib import Path
 
@@ -27,7 +28,7 @@ def render(image_tool_url: str, source_text: str, output_dir: Path, file_prefix:
     copy_text = ""
 
     last_error = None
-    for attempt in range(1, 3):
+    for attempt in range(1, 5):
         page = None
         browser = None
         try:
@@ -74,6 +75,8 @@ def render(image_tool_url: str, source_text: str, output_dir: Path, file_prefix:
                     browser.close()
                 except Exception:
                     pass
+
+            time.sleep(5)
 
     raise last_error
 
