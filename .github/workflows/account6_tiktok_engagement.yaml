@@ -92,29 +92,48 @@ jobs:
       - name: Commit and push generated content (image must be public before posting)
         if: steps.generate.outcome == 'success'
         run: |
+          set +e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add logs/ outputs/ diagnostics/ overrides/
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: account6 tiktok post ($(date +'%Y-%m-%d %H:%M'))"
-            pushed=0
-            for i in 1 2 3 4 5; do
-              out=$( (git pull --rebase origin main && git push) 2>&1 )
-              rc=$?
-              if [ "$rc" -eq 0 ]; then
-                pushed=1
-                break
-              fi
-              echo "push attempt $i failed (rc=$rc), retrying..."
-              echo "$out"
-              git rebase --abort 2>/dev/null || true
+          git diff --staged --quiet
+          if [ "$?" -eq 0 ]; then
+            echo "no staged changes, nothing to commit"
+            exit 0
+          fi
+
+          commit_out=$(git commit -m "chore: account6 tiktok post ($(date +'%Y-%m-%d %H:%M'))" 2>&1)
+          commit_rc=$?
+          if [ "$commit_rc" -ne 0 ]; then
+            safe_out=$(echo "$commit_out" | tr '\n' ' ' | head -c 800)
+            echo "::error::account6 git commit failed (rc=$commit_rc): $safe_out"
+            exit 1
+          fi
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            pull_out=$(git pull --rebase origin main 2>&1)
+            pull_rc=$?
+            if [ "$pull_rc" -ne 0 ]; then
+              safe_out=$(echo "$pull_out" | tr '\n' ' ' | head -c 500)
+              echo "::error::account6 pull-rebase attempt $i failed (rc=$pull_rc): $safe_out"
+              git rebase --abort >/dev/null 2>&1
               sleep $((RANDOM % 5 + 1))
-            done
-            if [ "$pushed" -ne 1 ]; then
-              safe_out=$(echo "$out" | tr '\n' ' ' | head -c 800)
-              echo "::error::failed to push account6 post after retries: $safe_out"
-              exit 1
+              continue
             fi
+            push_out=$(git push 2>&1)
+            push_rc=$?
+            if [ "$push_rc" -eq 0 ]; then
+              pushed=1
+              break
+            fi
+            safe_out=$(echo "$push_out" | tr '\n' ' ' | head -c 500)
+            echo "::error::account6 push attempt $i failed (rc=$push_rc): $safe_out"
+            sleep $((RANDOM % 5 + 1))
+          done
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::failed to push account6 post after all retries"
+            exit 1
           fi
 
       - name: Post to TikTok via Zernio
@@ -136,27 +155,46 @@ jobs:
       - name: Commit any remaining changes (e.g. error debug files)
         if: always()
         run: |
+          set +e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add logs/ outputs/ diagnostics/ overrides/
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))"
-            pushed=0
-            for i in 1 2 3 4 5; do
-              out=$( (git pull --rebase origin main && git push) 2>&1 )
-              rc=$?
-              if [ "$rc" -eq 0 ]; then
-                pushed=1
-                break
-              fi
-              echo "push attempt $i failed (rc=$rc), retrying..."
-              echo "$out"
-              git rebase --abort 2>/dev/null || true
+          git diff --staged --quiet
+          if [ "$?" -eq 0 ]; then
+            echo "no staged changes, nothing to commit"
+            exit 0
+          fi
+
+          commit_out=$(git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))" 2>&1)
+          commit_rc=$?
+          if [ "$commit_rc" -ne 0 ]; then
+            safe_out=$(echo "$commit_out" | tr '\n' ' ' | head -c 800)
+            echo "::error::account6 cleanup git commit failed (rc=$commit_rc): $safe_out"
+            exit 1
+          fi
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            pull_out=$(git pull --rebase origin main 2>&1)
+            pull_rc=$?
+            if [ "$pull_rc" -ne 0 ]; then
+              safe_out=$(echo "$pull_out" | tr '\n' ' ' | head -c 500)
+              echo "::error::account6 cleanup pull-rebase attempt $i failed (rc=$pull_rc): $safe_out"
+              git rebase --abort >/dev/null 2>&1
               sleep $((RANDOM % 5 + 1))
-            done
-            if [ "$pushed" -ne 1 ]; then
-              safe_out=$(echo "$out" | tr '\n' ' ' | head -c 800)
-              echo "::error::failed to push account6 cleanup after retries: $safe_out"
-              exit 1
+              continue
             fi
+            push_out=$(git push 2>&1)
+            push_rc=$?
+            if [ "$push_rc" -eq 0 ]; then
+              pushed=1
+              break
+            fi
+            safe_out=$(echo "$push_out" | tr '\n' ' ' | head -c 500)
+            echo "::error::account6 cleanup push attempt $i failed (rc=$push_rc): $safe_out"
+            sleep $((RANDOM % 5 + 1))
+          done
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::failed to push account6 cleanup after all retries"
+            exit 1
           fi
