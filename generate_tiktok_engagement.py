@@ -130,6 +130,48 @@ def validate_output(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
     return True, "OK"
 
 
+OVERRIDE_DELIMITER = "\n-----NEXT-----\n"
+
+
+def _pop_override_queue(config: dict, min_chars: int, max_chars: int):
+    """
+    config["override_queue_file"] が設定・存在し、中身があれば、
+    AI生成をスキップして先頭エントリをそのまま使う(事前承認済みの内容を
+    1回限り差し込むための仕組み)。使った分はキューから取り除き、
+    キューが空になったらファイルごと削除する(=次回から自動的に通常のAI生成へ戻る)。
+    フォーマット検証に失敗したエントリはログを残した上でスキップし、次のエントリを試す。
+    キューが存在しない/空/全エントリ不正なら None を返し、通常のAI生成にフォールバックする。
+    """
+    override_path = config.get("override_queue_file")
+    if not override_path:
+        return None
+    path = Path(override_path)
+    if not path.exists():
+        return None
+
+    raw = path.read_text(encoding="utf-8")
+    entries = [e.strip("\n") for e in raw.split(OVERRIDE_DELIMITER) if e.strip()]
+    if not entries:
+        path.unlink()
+        return None
+
+    while entries:
+        candidate = entries.pop(0)
+        is_valid, msg = validate_output(candidate, min_chars, max_chars)
+        if is_valid:
+            if entries:
+                path.write_text(OVERRIDE_DELIMITER.join(entries) + "\n", encoding="utf-8")
+            else:
+                path.unlink()
+            print(f"[手動投稿キュー] キューから1件使用します(残り{len(entries)}件)")
+            return candidate
+        print(f"[手動投稿キュー] キュー内エントリが検証エラーのためスキップ: {msg}")
+
+    # 全エントリが不正だった場合もキューを空にして通常生成へフォールバック
+    path.unlink()
+    return None
+
+
 def main():
     try:
         _run()
@@ -189,9 +231,16 @@ def _run():
     min_chars = config.get("min_chars", 200)
     max_chars = config.get("max_chars", 260)
 
+    # 手動投稿キュー(override_queue_file)が設定・存在し、中身があれば
+    # AI生成をスキップしてキュー先頭の内容をそのまま使う(事前承認済みの内容を
+    # 1回限り差し込むための仕組み)。キューを使い切ったらファイルごと削除し、
+    # 次回以降は自動的に通常のAI生成に戻る。
+    output_text = _pop_override_queue(config, min_chars, max_chars)
+
     max_retries = 8
-    output_text = ""
     for attempt in range(1, max_retries + 1):
+        if output_text is not None:
+            break
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
         # コードフェンス(```)で囲まれてしまった場合の除去
