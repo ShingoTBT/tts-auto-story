@@ -79,11 +79,49 @@ jobs:
       - name: Commit and push generated content (images must be public before posting)
         if: steps.generate.outcome == 'success'
         run: |
+          set +e
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add logs/ outputs/ diagnostics/
-          git diff --staged --quiet || git commit -m "chore: add generated news post ($(date +'%Y-%m-%d %H:%M'))"
-          git push
+          git diff --staged --quiet
+          if [ "$?" -eq 0 ]; then
+            echo "no staged changes, nothing to commit"
+            exit 0
+          fi
+
+          commit_out=$(git commit -m "chore: add generated news post ($(date +'%Y-%m-%d %H:%M'))" 2>&1)
+          commit_rc=$?
+          if [ "$commit_rc" -ne 0 ]; then
+            safe_out=$(echo "$commit_out" | tr '\n' ' ' | head -c 800)
+            echo "::error::account2 git commit failed (rc=$commit_rc): $safe_out"
+            exit 1
+          fi
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            pull_out=$(git pull --rebase origin main 2>&1)
+            pull_rc=$?
+            if [ "$pull_rc" -ne 0 ]; then
+              safe_out=$(echo "$pull_out" | tr '\n' ' ' | head -c 500)
+              echo "::error::account2 pull-rebase attempt $i failed (rc=$pull_rc): $safe_out"
+              git rebase --abort >/dev/null 2>&1
+              sleep $((RANDOM % 5 + 1))
+              continue
+            fi
+            push_out=$(git push 2>&1)
+            push_rc=$?
+            if [ "$push_rc" -eq 0 ]; then
+              pushed=1
+              break
+            fi
+            safe_out=$(echo "$push_out" | tr '\n' ' ' | head -c 500)
+            echo "::error::account2 push attempt $i failed (rc=$push_rc): $safe_out"
+            sleep $((RANDOM % 5 + 1))
+          done
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::failed to push account2 after all retries"
+            exit 1
+          fi
 
       - name: Post to TikTok via Zernio
         id: post_tiktok
@@ -106,9 +144,46 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          set +e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git add logs/ outputs/ diagnostics/
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))"
-            git pull --rebase origin main
-            git push
+          git diff --staged --quiet
+          if [ "$?" -eq 0 ]; then
+            echo "no staged changes, nothing to commit"
+            exit 0
+          fi
+
+          commit_out=$(git commit -m "chore: post-run cleanup ($(date +'%Y-%m-%d %H:%M'))" 2>&1)
+          commit_rc=$?
+          if [ "$commit_rc" -ne 0 ]; then
+            safe_out=$(echo "$commit_out" | tr '\n' ' ' | head -c 800)
+            echo "::error::account2 cleanup git commit failed (rc=$commit_rc): $safe_out"
+            exit 1
+          fi
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            pull_out=$(git pull --rebase origin main 2>&1)
+            pull_rc=$?
+            if [ "$pull_rc" -ne 0 ]; then
+              safe_out=$(echo "$pull_out" | tr '\n' ' ' | head -c 500)
+              echo "::error::account2 cleanup pull-rebase attempt $i failed (rc=$pull_rc): $safe_out"
+              git rebase --abort >/dev/null 2>&1
+              sleep $((RANDOM % 5 + 1))
+              continue
+            fi
+            push_out=$(git push 2>&1)
+            push_rc=$?
+            if [ "$push_rc" -eq 0 ]; then
+              pushed=1
+              break
+            fi
+            safe_out=$(echo "$push_out" | tr '\n' ' ' | head -c 500)
+            echo "::error::account2 cleanup push attempt $i failed (rc=$push_rc): $safe_out"
+            sleep $((RANDOM % 5 + 1))
+          done
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::failed to push account2 cleanup after all retries"
+            exit 1
           fi
