@@ -6,9 +6,7 @@ prompt_file: "prompts/emotional_story_v3.md"
 titles_log_file: "logs/account6_emotional_titles.jsonl"
 output_dir: "outputs/account6_tiktok"
 schedule_jst:
-  - "01:00"
-  - "07:00"
-  - "16:00"
+  - "02:00"
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 model: "claude-sonnet-4-6"
 recent_titles_count: 30

@@ -11,13 +11,7 @@ sibling_titles_log_files:
   - "logs/account5_tiktok_titles.jsonl"  # 姉妹アカウント(同一プロンプト)との重複防止
 output_dir: "outputs/account6_tiktok"
 schedule_jst:
-  - "01:00"
-  - "04:00"
-  - "07:00"
-  - "10:00"
-  - "13:00"
-  - "16:00"
-  - "19:00"
+  - "12:00"
   - "22:00"
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 image_count: 2
@@ -29,5 +23,5 @@ zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT5"  # アカウント1・2・5と同�
 zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_6"  # Zernio接続後に確定
 
 monitor_platform: "tiktok"  # 監視用: tiktok または threads
-monitor_max_interval_hours: 5  # これ以上投稿間隔が空いたら異常とみなす(1日8回想定なので短め)
+monitor_max_interval_hours: 12  # これ以上投稿間隔が空いたら異常とみなす(1日3回体制:2:00/12:00/22:00、最大間隔10時間+余裕)
 monitor_recovery_workflow: "account6_tiktok_engagement.yaml"  # 停滞検知時に自動再実行するワークフロー

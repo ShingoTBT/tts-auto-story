@@ -2,21 +2,11 @@ name: account6_tiktok_engagement
 
 on:
   schedule:
-    # 01:00 JST = 前日16:00 UTC
-    - cron: "0 16 * * *"
-    # 04:00 JST = 前日19:00 UTC
-    - cron: "0 19 * * *"
-    # 07:00 JST = 前日22:00 UTC
-    - cron: "0 22 * * *"
-    # 10:00 JST = 01:00 UTC
-    - cron: "0 1 * * *"
-    # 13:00 JST = 04:00 UTC
-    - cron: "0 4 * * *"
-    # 16:00 JST = 07:00 UTC
-    - cron: "0 7 * * *"
-    # 19:00 JST = 10:00 UTC
-    - cron: "0 10 * * *"
-    # 22:00 JST = 13:00 UTC
+    # 02:00 JST = 前日17:00 UTC (感動ストーリー)
+    - cron: "0 17 * * *"
+    # 12:00 JST = 03:00 UTC (共感/議論系)
+    - cron: "0 3 * * *"
+    # 22:00 JST = 13:00 UTC (共感/議論系)
     - cron: "0 13 * * *"
   workflow_dispatch: {}
 
@@ -70,7 +60,7 @@ jobs:
         run: |
           SCHEDULE="${{ github.event.schedule }}"
           echo "matched cron: $SCHEDULE"
-          if [ "$SCHEDULE" = "0 16 * * *" ] || [ "$SCHEDULE" = "0 22 * * *" ] || [ "$SCHEDULE" = "0 7 * * *" ]; then
+          if [ "$SCHEDULE" = "0 17 * * *" ]; then
             echo "config_path=accounts/account6_emotional.yaml" >> "$GITHUB_OUTPUT"
             echo "generator_script=generate.py" >> "$GITHUB_OUTPUT"
           else
