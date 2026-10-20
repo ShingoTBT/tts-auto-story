@@ -48,10 +48,59 @@ def send_file(token: str, room_id: str, file_path: Path, message: str = "") -> N
     r.raise_for_status()
 
 
+FAILURE_NOTICE_INTERVAL_HOURS = 6
+USER_CHATWORK_TO = "[To:237628]"
+
+
+def notify_post_failed(config: dict, source_text_path: Path, token: str, room_id: str) -> None:
+    """投稿(Zernio)に失敗したときの知らせ。同じアカウントは6時間に1回まで(毎時の失敗で通知が埋まらないように)"""
+    import json
+    import datetime
+
+    output_dir = Path(config["output_dir"])
+    state_path = output_dir / "post_failure_notice.json"
+    now = datetime.datetime.now()
+    try:
+        last = datetime.datetime.fromisoformat(json.loads(state_path.read_text(encoding="utf-8"))["last_notified_at"])
+        if (now - last).total_seconds() / 3600 < FAILURE_NOTICE_INTERVAL_HOURS:
+            print(f"直近{FAILURE_NOTICE_INTERVAL_HOURS}時間以内に失敗を知らせ済みのため、今回は送りません")
+            return
+    except Exception:
+        pass
+
+    detail = ""
+    error_path = output_dir / f"zernio_error_{source_text_path.stem}.txt"
+    if error_path.exists():
+        lines = error_path.read_text(encoding="utf-8").splitlines()
+        detail = "\n".join(l[:300] for l in lines if l.startswith(("status_code", "response_body")))
+
+    display_name = config.get("display_name", config["account_name"])
+    chatwork_label = config.get("chatwork_label", display_name)
+    post_url = config.get("tiktok_url") or config.get("threads_url", "")
+    body = (
+        f"{USER_CHATWORK_TO}\n"
+        f"[info][title]⚠️投稿失敗：{chatwork_label}[/title]"
+        f"文章は作れましたが、Zernio への投稿が失敗し、SNS には載っていません。\n"
+        f"{post_url}\n"
+        f"（同じアカウントの失敗の知らせは{FAILURE_NOTICE_INTERVAL_HOURS}時間に1回までにしています）"
+        + (f"[hr]{detail}" if detail else "")
+        + "[/info]"
+    )
+    send_message(token, room_id, body)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps({"last_notified_at": now.isoformat()}), encoding="utf-8")
+    print("ChatWorkに投稿失敗を通知しました")
+
+
 def main():
     if len(sys.argv) < 3:
-        print("使い方: python notify_chatwork.py <account_config.yaml> <source_text_file.txt>")
+        print("使い方: python notify_chatwork.py <account_config.yaml> <source_text_file.txt> [--failed]")
         sys.exit(1)
+
+    if "--failed" in sys.argv[3:]:
+        config = load_account_config(sys.argv[1])
+        notify_post_failed(config, Path(sys.argv[2]), os.environ["CHATWORK_API_TOKEN"], os.environ["CHATWORK_ROOM_ID"])
+        return
 
     config_path = sys.argv[1]
     source_text_path = Path(sys.argv[2])

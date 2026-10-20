@@ -28,6 +28,7 @@ GITHUB_REPO = "tts-auto-story"
 RECOVERY_STATE_PATH = Path("outputs/monitor_recovery_state.json")
 RECOVERY_COOLDOWN_HOURS = 4  # 同じアカウントへの自動再実行は、この時間は連続で行わない
 CHATWORK_MY_ACCOUNT_ID = "237628"  # しんさんのChatWorkアカウントID(TO付き緊急通知用)
+LONG_STALL_HOURS = 12  # これより長く止まっていたら、停滞アラートにTOを付ける
 
 # クレジット枯渇を検知するための、生成スクリプトのクラッシュログファイル一覧
 CRASH_LOG_FILES = [
@@ -212,6 +213,7 @@ def main():
 
     now = datetime.datetime.now()
     stalled = []
+    long_stalled = False
     ok_accounts = []
     recovery_state = load_recovery_state()
     dispatch_token = os.environ.get("GH_DISPATCH_TOKEN")
@@ -274,11 +276,17 @@ def main():
             recovery_note = "自動復旧の設定がないため、手動確認が必要です。"
 
         stalled.append((label, reason, recovery_note))
+        if elapsed_hours is None or elapsed_hours > LONG_STALL_HOURS:
+            long_stalled = True
 
     save_recovery_state(recovery_state)
 
     if stalled:
-        lines = ["＝＝＝＝＝⚠️投稿停滞アラート＝＝＝＝＝"]
+        lines = []
+        if long_stalled:
+            # 自動再実行で直らないまま長く止まっているときは、TO付きで知らせる
+            lines.append(f"[To:{CHATWORK_MY_ACCOUNT_ID}] {LONG_STALL_HOURS}時間以上止まっているアカウントがあります。自動再実行では直っていません。")
+        lines.append("＝＝＝＝＝⚠️投稿停滞アラート＝＝＝＝＝")
         lines.append(f"{now.strftime('%Y年%m月%d日 %H:%M')}時点")
         lines.append("")
         lines.append("以下のアカウントで、想定より投稿間隔が空いています。")

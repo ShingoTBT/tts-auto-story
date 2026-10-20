@@ -133,11 +133,20 @@ jobs:
         run: python post_to_tiktok.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}"
 
       - name: Notify ChatWork
-        if: steps.generate.outcome == 'success'
+        if: steps.generate.outcome == 'success' && steps.post_tiktok.outcome == 'success'
         env:
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: python notify_chatwork.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}"
+
+      # 投稿(Zernio)に失敗したときは「投稿通知」ではなく失敗の知らせを送る(同じアカウントは6時間に1回まで)
+      - name: Notify ChatWork (post failed)
+        if: steps.generate.outcome == 'success' && steps.post_tiktok.outcome == 'failure'
+        continue-on-error: true
+        env:
+          CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
+          CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
+        run: python notify_chatwork.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}" --failed
 
       - name: Commit any remaining changes (e.g. error debug files)
         if: always()
