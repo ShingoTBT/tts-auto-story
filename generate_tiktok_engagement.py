@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import claude_extra_params, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary
+from generate import claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary
 
 
 def load_account_config(config_path: str) -> dict:
@@ -244,6 +244,7 @@ def _run():
             break
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
+        output_text = strip_period_after_emoji(output_text)
         # コードフェンス(```)で囲まれてしまった場合の除去
         output_text = output_text.strip()
         if output_text.startswith("```"):

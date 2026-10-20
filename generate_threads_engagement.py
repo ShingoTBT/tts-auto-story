@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import claude_extra_params, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
+from generate import claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
 
 
 def strip_wrapping_quotes(text: str) -> str:
@@ -154,6 +154,7 @@ def _run():
         output_text = strip_meta_commentary(output_text)
         output_text = strip_wrapping_quotes(output_text)
         output_text = enforce_period_linebreaks(output_text)
+        output_text = strip_period_after_emoji(output_text)
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:
             break

@@ -35,6 +35,18 @@ def load_account_config(config_path: str) -> dict:
         return yaml.safe_load(f)
 
 
+
+# 絵文字(肌の色・異体字セレクタ・ZWJ のつながりを含む)の直後の「。」
+_EMOJI_PERIOD_RE = re.compile(
+    "([\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF][\uFE0F\u200D\U0001F3FB-\U0001F3FF\U0001F000-\U0001FAFF\u2600-\u27BF]*)。(?=\n|$)"
+)
+
+
+def strip_period_after_emoji(text: str) -> str:
+    """「しんどい🥺。」の「。」を消す(行の終わりにあるものだけ。文の途中はそのまま)"""
+    return _EMOJI_PERIOD_RE.sub(r"\1", text)
+
+
 def strip_meta_commentary(text: str) -> str:
     """
     AIが誤って出力に混入させがちな、自己チェック・メタ情報を除去する安全策。
@@ -199,6 +211,7 @@ def main():
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
+        output_text = strip_period_after_emoji(output_text)
         is_valid, message = validate_output_format(output_text)
 
         if is_valid:
