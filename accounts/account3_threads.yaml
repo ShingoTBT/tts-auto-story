@@ -12,7 +12,8 @@ topic_categories:
   - "SNSでの育児比較・育児マウンティング"
 titles_log_file: "logs/account3_parenting_titles.jsonl"
 output_dir: "outputs/account3_parenting"
-model: "claude-sonnet-4-6"
+model: "claude-haiku-5-5"  # 2026-10-20 安いモデルに切り替え（見本で確認済み）
+comment_model: "claude-sonnet-4-6"  # 広告コメントの文面は今のモデルのまま（見本未確認のため）
 recent_titles_count: 30
 min_chars: 200
 max_chars: 300

@@ -409,13 +409,13 @@ def process_account(config_path: str):
                 continue
             post_text = Path(text_file).read_text(encoding="utf-8")
 
-            keyword = extract_topic_keyword(post_text, config["model"])
+            keyword = extract_topic_keyword(post_text, config.get("comment_model", config["model"]))
             print(f"商品検索キーワード: {keyword}")
 
             provider = os.environ.get("PRODUCT_SEARCH_PROVIDER", "amazon").lower().strip()
             product = search_product(keyword, provider)
             if product:
-                comment_phrase = generate_comment_phrase(post_text, product["name"], config["model"])
+                comment_phrase = generate_comment_phrase(post_text, product["name"], config.get("comment_model", config["model"]))
                 if provider == "rakuten":
                     # 楽天のみ、プレビュー抑制用の中継リダイレクトを経由する
                     # (Amazonは規約上、独自リダイレクトの使用が禁止されているため、素のリンクをそのまま使う)
@@ -430,7 +430,7 @@ def process_account(config_path: str):
                 if not travel_link:
                     print("楽天トラベル用のアフィリエイトIDが未設定のため、今回はコメントをスキップします")
                     continue
-                comment_phrase = generate_travel_fallback_phrase(post_text, config["model"])
+                comment_phrase = generate_travel_fallback_phrase(post_text, config.get("comment_model", config["model"]))
                 link_url = build_redirect_url(travel_link)
 
             print(f"コメント文言: {comment_phrase}")

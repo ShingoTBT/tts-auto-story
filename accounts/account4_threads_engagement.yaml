@@ -5,7 +5,8 @@ threads_url: "https://www.threads.com/@kusetsuyo.qa"
 prompt_file: "prompts/threads_engagement_v1.md"
 titles_log_file: "logs/account4_threads_titles.jsonl"
 output_dir: "outputs/account4_threads"
-model: "claude-sonnet-4-6"
+model: "claude-haiku-5-5"  # 2026-10-20 安いモデルに切り替え（見本で確認済み）
+comment_model: "claude-sonnet-4-6"  # 広告コメントの文面は今のモデルのまま（見本未確認のため）
 recent_titles_count: 30
 min_chars: 200
 max_chars: 300

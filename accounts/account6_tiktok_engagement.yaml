@@ -17,7 +17,7 @@ image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 image_count: 2
 min_chars: 320
 max_chars: 400
-model: "claude-sonnet-4-6"
+model: "claude-haiku-5-5"  # 2026-10-20 安いモデルに切り替え（見本で確認済み）
 recent_titles_count: 30
 zernio_api_key_env: "ZERNIO_API_KEY_ACCOUNT5"  # アカウント1・2・5と同じデフォルトキーを使用
 zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_6"  # Zernio接続後に確定

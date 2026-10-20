@@ -20,6 +20,23 @@ import anthropic
 from generate import claude_extra_params, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
 
 
+def strip_wrapping_quotes(text: str) -> str:
+    """投稿全体が「」で囲まれていたら外す(先頭の「に対応する」が最後の文字のときだけ)"""
+    t = text.strip()
+    if len(t) > 2 and t.startswith("「") and t.endswith("」"):
+        depth = 0
+        for i, ch in enumerate(t):
+            if ch == "「":
+                depth += 1
+            elif ch == "」":
+                depth -= 1
+                if depth == 0:
+                    if i == len(t) - 1:
+                        return t[1:-1].strip()
+                    break
+    return text
+
+
 def enforce_period_linebreaks(text: str) -> str:
     """句点(。)のたびに改行する(すでに改行済みなら二重にしない)"""
     return re.sub(r"。(?!\n)", "。\n", text)
@@ -135,6 +152,7 @@ def _run():
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
+        output_text = strip_wrapping_quotes(output_text)
         output_text = enforce_period_linebreaks(output_text)
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
         if is_valid:
