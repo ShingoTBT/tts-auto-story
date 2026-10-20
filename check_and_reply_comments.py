@@ -19,7 +19,7 @@ import yaml
 import requests
 import anthropic
 
-from generate import load_system_prompt
+from generate import claude_extra_params, load_system_prompt
 from product_search import search_product
 
 ZERNIO_API_BASE = "https://zernio.com/api/v1"
@@ -163,6 +163,7 @@ def extract_topic_keyword(post_text: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=30,
         system=(
             "与えられた投稿の内容(人間関係の悩み・シチュエーション)を読み、"
@@ -224,6 +225,7 @@ def generate_comment_phrase(post_text: str, product_name: str, model: str) -> st
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=60,
         system=(
             "あなたはSNSコメントの導入文を考える担当です。\n"
@@ -258,6 +260,7 @@ def generate_travel_fallback_phrase(post_text: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=60,
         system=(
             "あなたはSNSコメントの導入文を考える担当です。\n"

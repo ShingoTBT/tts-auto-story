@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
+from generate import claude_extra_params, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
 
 
 def enforce_period_linebreaks(text: str) -> str:
@@ -56,6 +56,7 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=1000,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
@@ -78,6 +79,7 @@ def summarize_for_dedup(text: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=60,
         system="与えられた投稿のシチュエーションを、10〜20文字程度の一言で要約してください。説明は不要です。",
         messages=[{"role": "user", "content": text}],

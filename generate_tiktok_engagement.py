@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary
+from generate import claude_extra_params, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary
 
 
 def load_account_config(config_path: str) -> dict:
@@ -94,6 +94,7 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
     client = anthropic.Anthropic()
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=1000,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],

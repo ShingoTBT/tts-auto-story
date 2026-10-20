@@ -26,8 +26,30 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # Xserver からの毎時の合図・GitHub の定時起動・監視の自動復旧が重なっても
+      # 二重投稿しないよう、直近45分以内に投稿していれば今回は何もしない
+      - name: Skip if posted within 45 minutes
+        id: guard
+        run: |
+          python - <<'EOF'
+          import json, os, datetime, yaml
+          cfg = yaml.safe_load(open("accounts/account3_threads.yaml", encoding="utf-8"))
+          skip = False
+          try:
+              lines = [l for l in open(cfg["titles_log_file"], encoding="utf-8") if l.strip()]
+              last = datetime.datetime.fromisoformat(json.loads(lines[-1])["generated_at"])
+              minutes = (datetime.datetime.now() - last).total_seconds() / 60
+              print(f"last post {minutes:.0f} minutes ago")
+              skip = minutes < 45
+          except Exception as e:
+              print(f"guard check failed, continue: {e}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              print("skip=" + ("true" if skip else "false"), file=f)
+          EOF
+
       - name: Generate Threads post
         id: generate
+        if: steps.guard.outputs.skip != 'true'
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

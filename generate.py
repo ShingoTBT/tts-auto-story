@@ -21,6 +21,15 @@ import yaml
 import anthropic
 
 
+def claude_extra_params(model: str) -> dict:
+    """モデルごとの追加指定。Haiku 5.5 は「考える処理」が既定でオンで、
+    短い上限(要約の60トークンなど)を使い切って空の答えになるため、オフにする。
+    それ以外のモデル(今の Sonnet 4.6)は何も足さない=今までどおり"""
+    if model.startswith("claude-haiku-5"):
+        return {"thinking": {"type": "disabled"}}
+    return {}
+
+
 def load_account_config(config_path: str) -> dict:
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -131,6 +140,7 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
 
     response = client.messages.create(
         model=model,
+        **claude_extra_params(model),
         max_tokens=2000,
         system=system_prompt,
         messages=[{"role": "user", "content": user_message}],
