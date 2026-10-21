@@ -5,6 +5,14 @@ tiktok_url: "https://tiktok.com/@user8258702569269"
 prompt_file: "prompts/news_v1.md"
 titles_log_file: "logs/account2_news_titles.jsonl"
 google_trend_ratio: 0.0  # 0.0=はてな100%, 1.0=Google100%, 0.5=半々
+# ネタのジャンル指定(2026-10-21 ユーザーの希望)。はてな＋下のRSSから、AIが
+# ジャンルに合う記事だけを話題になりそうな順に選ぶ。消すと今までどおり(はてなの全ジャンル)
+topic_filter: "ミュージシャン・アイドル(歌手・バンド・アイドルグループ・K-POPなど)に関するニュース"
+topic_filter_model: "claude-sonnet-4-6"  # 10-21 Haiku 5.5 は音楽以外やMV動画も選んだため
+topic_extra_rss:
+  - "https://natalie.mu/music/feed/news"  # 音楽ナタリー
+  - "https://realsound.jp/music/feed"  # リアルサウンド(音楽)
+  - "https://www.musicvoice.jp/feed/"  # Music Voice
 output_dir: "outputs/account2_news"
 notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
 schedule_jst:

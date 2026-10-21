@@ -17,6 +17,7 @@ import re
 import json
 import random
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 import requests
@@ -30,6 +31,21 @@ HATENA_RSS_URLS = [
 ]
 MIN_ARTICLE_CHARS = 300
 MAX_CANDIDATES_TO_CHECK = 10
+
+# topic_filter(アカウント設定)があるときだけ使う、ジャンル専門のニュースRSS
+ATOM_NS = "http://www.w3.org/2005/Atom"
+RSS1_NS = "http://purl.org/rss/1.0/"
+TOPIC_FILTER_DEFAULT_MODEL = "claude-sonnet-4-6"
+TOPIC_FILTER_MAX_TITLES = 80
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+# 動画・SNSのページはニュース記事ではないので、ジャンル指定のときは候補に入れない
+NON_ARTICLE_DOMAINS = ("youtube.com", "youtu.be", "nicovideo.jp", "x.com", "twitter.com", "tiktok.com", "instagram.com")
+# AIでの絞り込みに失敗したときの予備(タイトルにこの語があれば対象とみなす)
+TOPIC_FALLBACK_KEYWORDS_DEFAULT = [
+    "アイドル", "歌手", "バンド", "ミュージシャン", "アーティスト", "シンガー", "ラッパー",
+    "新曲", "アルバム", "シングル", "ライブ", "ツアー", "コンサート", "ドーム", "紅白",
+    "MV", "メンバー", "グループ", "K-POP", "坂46", "AKB48", "ジャニーズ", "STARTO", "音楽",
+]
 
 
 def load_account_config(config_path: str) -> dict:
@@ -126,6 +142,99 @@ def fetch_hatena_items() -> list[dict]:
     return items
 
 
+def fetch_feed_items(rss_url: str) -> list[dict]:
+    """RSS1.0 / RSS2.0 / Atom のどれでも読み、{keyword, traffic, news_items} の形で返す"""
+    try:
+        resp = requests.get(rss_url, timeout=20, headers={"User-Agent": BROWSER_UA})
+        resp.raise_for_status()
+        root = ET.fromstring(resp.content)
+    except Exception as e:
+        print(f"  RSS取得エラー ({rss_url}): {e}")
+        return []
+
+    entries = []
+    for item in root.findall(f".//{{{RSS1_NS}}}item"):
+        entries.append((item.findtext(f"{{{RSS1_NS}}}title", default=""),
+                        item.findtext(f"{{{RSS1_NS}}}link", default="")))
+    for item in root.findall(".//channel/item"):
+        entries.append((item.findtext("title", default=""), item.findtext("link", default="")))
+    for entry in root.findall(f".//{{{ATOM_NS}}}entry"):
+        link_el = entry.find(f"{{{ATOM_NS}}}link")
+        entries.append((entry.findtext(f"{{{ATOM_NS}}}title", default=""),
+                        link_el.get("href", "") if link_el is not None else ""))
+
+    source = urlparse(rss_url).netloc
+    items = []
+    for title, link in entries:
+        title, link = title.strip(), link.strip()
+        if title and link:
+            items.append({
+                "keyword": title,
+                "traffic": 0,
+                "news_items": [{"url": link, "title": title, "source": source}],
+            })
+    return items
+
+
+def fetch_topic_items(config: dict) -> list[dict]:
+    """はてなの人気エントリー＋ジャンル専門RSSを集める(はてなを先に=話題性の高い順)"""
+    items = fetch_hatena_items()
+    for rss_url in config.get("topic_extra_rss", []):
+        items.extend(fetch_feed_items(rss_url))
+
+    seen_urls = set()
+    unique = []
+    for item in items:
+        url = item["news_items"][0]["url"]
+        if url in seen_urls:
+            continue
+        host = urlparse(url).netloc.lower()
+        if any(host == d or host.endswith("." + d) for d in NON_ARTICLE_DOMAINS):
+            continue
+        seen_urls.add(url)
+        unique.append(item)
+    return unique
+
+
+def select_topic_items_with_ai(items: list[dict], topic: str, model: str) -> list[dict]:
+    """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる"""
+    import anthropic
+    from generate import claude_extra_params
+
+    items = items[:TOPIC_FILTER_MAX_TITLES]
+    listing = "\n".join(f"{i}: {item['keyword']}" for i, item in enumerate(items))
+    prompt = (
+        f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
+        "- 当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外\n"
+        "- ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外\n"
+        "- 歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外\n"
+        "- 選んだものを、TikTokの一般の視聴者が反応しやすい順(有名な人・大きな出来事・賛否が分かれる話題が先、"
+        "小さな告知やリリース情報は後)に並べる\n"
+        "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
+        f"{listing}"
+    )
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=model,
+        **claude_extra_params(model),
+        max_tokens=512,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    text = "".join(block.text for block in response.content if block.type == "text")
+    m = re.search(r"\[[\d,\s]*\]", text)
+    if not m:
+        raise ValueError(f"AIの回答から番号の一覧を読めませんでした: {text[:200]}")
+    picked = []
+    for idx in json.loads(m.group(0)):
+        if 0 <= idx < len(items) and items[idx] not in picked:
+            picked.append(items[idx])
+    return picked
+
+
+def select_topic_items_by_keywords(items: list[dict], keywords: list[str]) -> list[dict]:
+    return [item for item in items if any(k in item["keyword"] for k in keywords)]
+
+
 def extract_article_text(url: str) -> str:
     try:
         downloaded = trafilatura.fetch_url(url)
@@ -191,8 +300,27 @@ def main():
     # 0.0 なら常にはてな、1.0 なら常にGoogle、0.5なら半々でランダムに混在。
     google_ratio = float(config.get("google_trend_ratio", 0.0))
     use_google = random.random() < google_ratio
+    topic = config.get("topic_filter")
 
-    if use_google:
+    if topic:
+        # ジャンル指定あり: はてな＋専門RSSから、ジャンルに合うものだけを話題性の順に使う
+        print(f"ジャンル指定: {topic}")
+        all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
+        print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
+        try:
+            trend_items = select_topic_items_with_ai(
+                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL)
+            )
+            print(f"AIが選んだ記事: {len(trend_items)}件")
+        except Exception as e:
+            print(f"  AIでの絞り込みに失敗したため、キーワードで絞り込みます: {e}")
+            trend_items = select_topic_items_by_keywords(
+                all_items, config.get("topic_fallback_keywords", TOPIC_FALLBACK_KEYWORDS_DEFAULT)
+            )
+        for item in trend_items[:MAX_CANDIDATES_TO_CHECK]:
+            print(f"  - {item['keyword']}")
+        source_type = "topic"
+    elif use_google:
         print(f"今回はGoogleトレンドを使用します(google_trend_ratio={google_ratio})")
         print("Googleトレンドを取得中...")
         trend_items = fetch_trend_items()
