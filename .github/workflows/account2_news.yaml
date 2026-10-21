@@ -62,6 +62,8 @@ jobs:
       - name: Fetch trending news candidate
         id: fetch
         continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python fetch_trending_news.py accounts/account2_news.yaml
 
       - name: Generate news story

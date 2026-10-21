@@ -1,0 +1,81 @@
+name: preview_account2_music
+
+# アカウント2(ニュース)を「ミュージシャン・アイドルのニュースだけ」にした場合の見本作り(試験用)。
+# 試し用のブランチ preview-music-news に push したときだけ動く。main・本番には触らない。
+# 投稿・チャットワーク通知はしない。本番のログ(logs/)も書き換えない。
+# 見本(文章・画像)は outputs/preview_music/ に入れて、このブランチにだけコミットする。
+on:
+  push:
+    branches: [preview-music-news]
+
+concurrency:
+  group: preview-account2-music
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: Install Japanese fonts and configure aliases
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk fonts-noto-cjk-extra
+          sudo mkdir -p /etc/fonts/conf.d
+          sudo cp fontconfig/local.conf /etc/fonts/local.conf
+          sudo fc-cache -f
+
+      - name: Build preview config (output and logs moved, everything else as production)
+        run: |
+          python - <<'EOF'
+          import os, shutil, yaml
+          with open("accounts/account2_news.yaml", encoding="utf-8") as f:
+              c = yaml.safe_load(f)
+          c["output_dir"] = "outputs/preview_music/account2_news"
+          tmp_log = "/tmp/account2_news_titles.jsonl"
+          if os.path.exists(c["titles_log_file"]):
+              shutil.copy(c["titles_log_file"], tmp_log)
+          c["titles_log_file"] = tmp_log
+          with open("/tmp/preview_account2_news.yaml", "w", encoding="utf-8") as f:
+              yaml.safe_dump(c, f, allow_unicode=True)
+          EOF
+
+      - name: Generate samples (2) and render images
+        run: |
+          set +e
+          for i in 1 2; do
+            python fetch_trending_news.py /tmp/preview_account2_news.yaml || continue
+            cp outputs/preview_music/account2_news/trend_candidate.json "outputs/preview_music/account2_news/trend_candidate_$i.json"
+            GITHUB_OUTPUT=/tmp/gen_out_$i python generate_news.py /tmp/preview_account2_news.yaml || continue
+            out_path=$(grep '^output_path=' /tmp/gen_out_$i | cut -d= -f2-)
+            python render_images.py /tmp/preview_account2_news.yaml "$out_path"
+          done
+          exit 0
+
+      - name: Commit samples to this branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdir -p outputs/preview_music
+          git add outputs/preview_music/
+          if git diff --staged --quiet; then
+            echo "no samples"
+            exit 0
+          fi
+          git commit -m "chore: account2 music news preview samples"
+          git push origin HEAD:preview-music-news
