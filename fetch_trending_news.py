@@ -35,8 +35,11 @@ MAX_CANDIDATES_TO_CHECK = 10
 # topic_filter(アカウント設定)があるときだけ使う、ジャンル専門のニュースRSS
 ATOM_NS = "http://www.w3.org/2005/Atom"
 RSS1_NS = "http://purl.org/rss/1.0/"
-TOPIC_FILTER_DEFAULT_MODEL = "claude-haiku-5-5"
+TOPIC_FILTER_DEFAULT_MODEL = "claude-sonnet-4-6"
 TOPIC_FILTER_MAX_TITLES = 80
+BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
+# 動画・SNSのページはニュース記事ではないので、ジャンル指定のときは候補に入れない
+NON_ARTICLE_DOMAINS = ("youtube.com", "youtu.be", "nicovideo.jp", "x.com", "twitter.com", "tiktok.com", "instagram.com")
 # AIでの絞り込みに失敗したときの予備(タイトルにこの語があれば対象とみなす)
 TOPIC_FALLBACK_KEYWORDS_DEFAULT = [
     "アイドル", "歌手", "バンド", "ミュージシャン", "アーティスト", "シンガー", "ラッパー",
@@ -142,7 +145,7 @@ def fetch_hatena_items() -> list[dict]:
 def fetch_feed_items(rss_url: str) -> list[dict]:
     """RSS1.0 / RSS2.0 / Atom のどれでも読み、{keyword, traffic, news_items} の形で返す"""
     try:
-        resp = requests.get(rss_url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+        resp = requests.get(rss_url, timeout=20, headers={"User-Agent": BROWSER_UA})
         resp.raise_for_status()
         root = ET.fromstring(resp.content)
     except Exception as e:
@@ -185,6 +188,9 @@ def fetch_topic_items(config: dict) -> list[dict]:
         url = item["news_items"][0]["url"]
         if url in seen_urls:
             continue
+        host = urlparse(url).netloc.lower()
+        if any(host == d or host.endswith("." + d) for d in NON_ARTICLE_DOMAINS):
+            continue
         seen_urls.add(url)
         unique.append(item)
     return unique
@@ -201,6 +207,7 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str) -> lis
         f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
         "- 当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外\n"
         "- ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外\n"
+        "- 歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外\n"
         "- 選んだものを、TikTokの一般の視聴者が反応しやすい順(有名な人・大きな出来事・賛否が分かれる話題が先、"
         "小さな告知やリリース情報は後)に並べる\n"
         "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
