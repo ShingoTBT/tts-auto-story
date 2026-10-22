@@ -1,0 +1,8 @@
+# 依頼「ルートバズ」の TikTok アカウント。投稿はルートバズのチャット(恋愛アカウント/tools/send_post.py)が行う。
+# ここでは毎朝のレポート(combined_report.py --rootbuzz)だけに使う。
+account_name: "rootbuzz_kei"
+display_name: "ケイ｜アラサー男の本音"
+chatwork_label: "ケイ｜アラサー男の本音"
+tiktok_url: "https://tiktok.com/@kei_otoko_honne"
+zernio_api_key_env: "ZERNIO_API_KEY_ROOTBUZZ"  # Zernio の4つ目(zernio4)
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ"

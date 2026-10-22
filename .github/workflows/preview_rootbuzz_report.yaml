@@ -1,0 +1,24 @@
+name: preview_rootbuzz_report
+
+# ルートバズレポートの試し(CW には送らない。ログに表示するだけ)。このブランチへの push でだけ動く。
+on:
+  push:
+    branches: [preview-rootbuzz-report]
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Build report (no send)
+        env:
+          ZERNIO_API_KEY_ROOTBUZZ: ${{ secrets.ZERNIO_API_KEY_ROOTBUZZ }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ }}
+        run: |
+          python -c "import combined_report"
+          python -c "from combined_report import now_jst_str; from rootbuzz_report import build_rootbuzz_report; print(build_rootbuzz_report('accounts/rootbuzz_kei.yaml', now_jst_str()[0]))"
