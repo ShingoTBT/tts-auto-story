@@ -9,6 +9,7 @@ TikTokアカウントのフォロワー数レポートと、Threadsアカウン�
 
 import sys
 import os
+import json
 import datetime
 from pathlib import Path
 
@@ -72,13 +73,50 @@ def build_follower_report(tiktok_configs: list[str], timestamp_str: str) -> str:
             print(f"エラー({label}): {e}")
             lines.append(f"・{label}：取得エラー")
 
+    voice_lines = build_voice_lines(tiktok_configs)
     return (
         "＝＝＝＝＝フォロワーレポートです＝＝＝＝＝\n"
         f"{timestamp_str}現在\n"
         "■TikTokの総フォロワー数\n"
         + "\n".join(lines) + "\n"
-        "＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+        + ("\n".join(voice_lines) + "\n" if voice_lines else "")
+        + "＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
     )
+
+
+def build_voice_lines(tiktok_configs: list[str]) -> list[str]:
+    """動画で投稿しているアカウントの、昨日(日本時間)の投稿に使った声(ElevenLabs か VOICEVOX)の本数と、
+    ElevenLabs の残り文字数(最後の投稿のときの値)。2026-10-23〜"""
+    yesterday = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date() - datetime.timedelta(days=1)
+    lines = []
+    latest = None  # (posted_at, remaining)
+    for config_path in tiktok_configs:
+        config = load_account_config(config_path)
+        if "video" not in config:
+            continue
+        label = config.get("chatwork_label", config.get("display_name", config["account_name"]))
+        counts = {}
+        log = Path(config["output_dir"]) / "posted_videos.jsonl"
+        if log.exists():
+            for raw in log.read_text(encoding="utf-8").splitlines():
+                try:
+                    rec = json.loads(raw)
+                except ValueError:
+                    continue
+                at = rec.get("posted_at", "")
+                if rec.get("elevenlabs_remaining") is not None and (latest is None or at > latest[0]):
+                    latest = (at, rec["elevenlabs_remaining"])
+                if at[:10] == yesterday.isoformat():
+                    eng = rec.get("voice_engine") or "不明"
+                    counts[eng] = counts.get(eng, 0) + 1
+        detail = "・".join(f"{k} {v}本" for k, v in sorted(counts.items())) or "投稿なし"
+        lines.append(f"・{label}：{detail}")
+    if not lines:
+        return []
+    out = [f"■動画の声（昨日{yesterday.month}/{yesterday.day}の投稿）"] + lines
+    if latest:
+        out.append(f"・ElevenLabs の残り：{latest[1]:,}字（足りなくなると自動で VOICEVOX に切り替え）")
+    return out
 
 
 def build_comment_report(threads_configs: list[str], timestamp_str: str) -> str:

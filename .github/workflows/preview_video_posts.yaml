@@ -1,0 +1,108 @@
+name: preview_video_posts
+
+# 動画投稿(2026-10-23〜)の見本づくり。本番と同じ手順で 文章 → 動画 まで作り、投稿はしない。
+# ブランチ video-posting への push でだけ動く(main・本番には触らない)。
+# 動画は Artifacts(preview-videos)に置く。文章・声の記録は outputs/preview_video/ に入れてこのブランチにコミットする。
+on:
+  push:
+    branches: [video-posting]
+    paths:
+      - ".github/workflows/preview_video_posts.yaml"
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache fonts for video (Noto Sans/Serif JP)
+        id: fonts-cache
+        uses: actions/cache@v4
+        with:
+          path: fonts
+          key: noto-jp-otf-v1
+
+      - name: Download fonts if not cached
+        if: steps.fonts-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p fonts
+          for f in Sans/SubsetOTF/JP/NotoSansJP-Bold.otf Serif/SubsetOTF/JP/NotoSerifJP-SemiBold.otf; do
+            curl -fsSL --retry 3 -o "fonts/$(basename "$f")" "https://github.com/notofonts/noto-cjk/raw/main/$f"
+          done
+
+      - name: Check ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            curl -fsSL --retry 3 -o /tmp/ff.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+            tar -xf /tmp/ff.tar.xz -C /tmp
+            sudo cp /tmp/ffmpeg-*-static/ffmpeg /tmp/ffmpeg-*-static/ffprobe /usr/local/bin/
+          fi
+          ffmpeg -version | head -1
+
+      - name: Build preview configs (output and logs moved, everything else as production)
+        run: |
+          python - <<'EOF'
+          import os, shutil, yaml
+          for n in ["account2_news", "account5_tiktok_engagement", "account6_emotional"]:
+              with open(f"accounts/{n}.yaml", encoding="utf-8") as f:
+                  c = yaml.safe_load(f)
+              c["output_dir"] = f"outputs/preview_video/{n}"
+              tmp_log = f"/tmp/{n}_titles.jsonl"
+              if os.path.exists(c["titles_log_file"]):
+                  shutil.copy(c["titles_log_file"], tmp_log)
+              c["titles_log_file"] = tmp_log
+              for k in ("sibling_titles_log_files",):
+                  c.pop(k, None)
+              with open(f"/tmp/preview_{n}.yaml", "w", encoding="utf-8") as f:
+                  yaml.safe_dump(c, f, allow_unicode=True)
+          EOF
+
+      - name: Generate texts and videos (no posting)
+        run: |
+          set +e
+          gen() {  # $1=config名 $2=生成スクリプト
+            GITHUB_OUTPUT=/tmp/gen_$1 python $2 /tmp/preview_$1.yaml || return
+            src=$(grep '^output_path=' /tmp/gen_$1 | cut -d= -f2-)
+            out="$(dirname "$src")/videos/$(basename "$src" .txt)"
+            python make_story_video.py --config /tmp/preview_$1.yaml "$src" "$out"
+          }
+          python fetch_trending_news.py /tmp/preview_account2_news.yaml && gen account2_news generate_news.py
+          gen account5_tiktok_engagement generate_tiktok_engagement.py
+          gen account6_emotional generate.py
+          # 無料の声(VOICEVOX・Docker)の確かめ: ElevenLabs のキーを外してアカウント5の文章をもう1本
+          src=$(grep '^output_path=' /tmp/gen_account5_tiktok_engagement | cut -d= -f2-)
+          ELEVENLABS_API_KEY= python make_story_video.py --config /tmp/preview_account5_tiktok_engagement.yaml "$src" "outputs/preview_video/voicevox_check"
+          exit 0
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-videos
+          path: |
+            outputs/preview_video/**/*.mp4
+            outputs/preview_video/**/*.png
+            outputs/preview_video/**/*.txt
+            outputs/preview_video/**/*.json
+          retention-days: 7
+
+      - name: Commit texts and voice records to this branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/preview_video/ || true
+          if git diff --staged --quiet; then exit 0; fi
+          git commit -m "chore: video posting preview"
+          git push origin HEAD:video-posting
