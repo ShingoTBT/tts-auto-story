@@ -1,0 +1,33 @@
+name: check_zernio_ids
+
+# Zernio のつなぎ直し後に、TikTok アカウントの番号(accountId)と接続の種類を確かめるだけ(読み取りのみ)。
+# このブランチへの push でだけ動く。
+on:
+  push:
+    branches: [check-zernio-ids]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: List accounts (read only)
+        env:
+          K1: ${{ secrets.ZERNIO_API_KEY }}
+          K3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
+          ID2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
+          ID3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
+          ID6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          secrets = {"ACCOUNT_ID_2": os.environ["ID2"], "ACCOUNT_ID_3": os.environ["ID3"], "ACCOUNT_ID_6": os.environ["ID6"]}
+          for label, key in [("Zernio1", os.environ["K1"]), ("Zernio3", os.environ["K3"])]:
+              req = urllib.request.Request("https://zernio.com/api/v1/accounts", headers={"Authorization": f"Bearer {key}"})
+              for a in json.load(urllib.request.urlopen(req))["accounts"]:
+                  if a["platform"] != "tiktok":
+                      continue
+                  same = [n for n, v in secrets.items() if v == a["_id"]]
+                  # id は秘密ではない。Secrets と同じ値だと GitHub が *** で隠すので、文字を区切って表示する
+                  print(label, a["username"], " ".join(a["_id"]), (a.get("metadata") or {}).get("apiFlavor"), "Secretsと一致:", same or "なし")
+          PY
