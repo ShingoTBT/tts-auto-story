@@ -186,6 +186,35 @@ def validate_output_format(text: str) -> tuple[bool, str]:
     return True, "OK"
 
 
+def use_queued_post(config: dict) -> bool:
+    """ユーザーが見本で確認済みの投稿(文章＋動画)が <output_dir>/queue_next/ にあれば、新しく作らずにそれを使う。
+    1回使うと消える(2026-10-23〜 動画投稿の最初の1本に見本を使うため)"""
+    import shutil
+    q = Path(config["output_dir"]) / "queue_next"
+    txts = sorted(q.glob("*.txt")) if q.exists() else []
+    if not txts:
+        return False
+    src = txts[0]
+    output_dir = Path(config["output_dir"])
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = output_dir / f"{timestamp}.txt"
+    shutil.move(str(src), output_path)
+    video = q / "videos" / src.stem
+    if video.exists():
+        dest = output_dir / "videos" / timestamp
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(video), dest)
+    title = extract_title(output_path.read_text(encoding="utf-8"))
+    append_title_log(config["titles_log_file"], title)
+    print(f"見本で確認済みの投稿を使います: {output_path}")
+    print(f"タイトル: {title}")
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"output_path={output_path}\n")
+    return True
+
+
 def extract_title(text: str) -> str:
     lines = text.split("\n")
     return lines[0].strip() if lines else ""
@@ -198,6 +227,8 @@ def main():
 
     config_path = sys.argv[1]
     config = load_account_config(config_path)
+    if use_queued_post(config):
+        return
 
     system_prompt = load_system_prompt(config["prompt_file"])
     recent_titles = load_recent_titles(
