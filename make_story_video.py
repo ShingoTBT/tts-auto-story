@@ -243,8 +243,102 @@ def synth_voicevox(text, speaker, tempo, out_wav, log):
     tmp.unlink()
 
 
+GOOGLE_TTS = "https://texttospeech.googleapis.com/v1/text:synthesize"
+
+
+class GoogleTTSError(RuntimeError):
+    pass
+
+
+def google_key():
+    k = os.environ.get("GOOGLE_TTS_API_KEY")
+    if k:
+        return k.strip()
+    f = Path(os.environ.get("USERPROFILE", "~")) / ".secrets" / "google_tts.txt"
+    return f.read_text().strip() if f.exists() else ""
+
+
+# ---- Google の無料枠(毎月100万字)を超えないための見張り(ユーザー「課金は絶対に避けたい」2026-10-23) ----
+GOOGLE_FREE_CHARS = 1_000_000
+GOOGLE_ALERT_RATIO = 0.30   # これを超えたら投稿のたびに TO 付きで警告(ふつうは月15%前後)
+GOOGLE_STOP_RATIO = 0.60    # これを超えたらその月は Google を使わない(VOICEVOX にする)
+GOOGLE_USED_THIS_RUN = [0]  # この実行で Google に送った文字数
+
+
+def jst_month():
+    import datetime
+    return (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m")
+
+
+def google_usage_this_month():
+    """全アカウントの outputs/*/google_tts_usage.jsonl を足した、今月(日本時間)の使用文字数"""
+    import json
+    month, total = jst_month(), 0
+    for f in Path("outputs").glob("*/google_tts_usage.jsonl"):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            try:
+                rec = json.loads(line)
+            except ValueError:
+                continue
+            if rec.get("month") == month:
+                total += int(rec.get("chars", 0))
+    return total
+
+
+def record_google_usage(output_dir, chars, title):
+    import json
+    import datetime
+    if not chars:
+        return
+    f = Path(output_dir) / "google_tts_usage.jsonl"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"month": jst_month(), "chars": chars, "title": title,
+           "at": (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).isoformat(timespec="seconds")}
+    with open(f, "a", encoding="utf-8") as fp:
+        fp.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def chatwork_alert(body):
+    """TO 付きで ChatWork に知らせる(トークンが無い手元の試しでは表示だけ)"""
+    token, room = os.environ.get("CHATWORK_API_TOKEN"), os.environ.get("CHATWORK_ROOM_ID")
+    print("  [警告] " + body.replace("\n", " "))
+    if not token or not room:
+        return
+    try:
+        requests.post(f"https://api.chatwork.com/v2/rooms/{room}/messages", headers={"X-ChatWorkToken": token},
+                      data={"body": f"[To:237628]\n{body}"}, timeout=15)
+    except Exception as e:
+        print(f"  ChatWork に送れませんでした: {e}")
+
+
+def synth_google(text, voice, rate, out_wav, log):
+    """Google Cloud Text-to-Speech(Chirp 3 HD)で読み上げる。voice は「Kore」のような声の名前。
+    速さは Google 側の speakingRate で指定する(後から伸び縮みさせないので音がきれい)"""
+    import base64
+    say = to_reading(text)
+    GOOGLE_USED_THIS_RUN[0] += len(say)
+    body = {
+        "input": {"text": say},
+        "voice": {"languageCode": "ja-JP", "name": f"ja-JP-Chirp3-HD-{voice}"},
+        "audioConfig": {"audioEncoding": "LINEAR16", "sampleRateHertz": SR, "speakingRate": rate},
+    }
+    r = requests.post(GOOGLE_TTS, params={"key": google_key()}, json=body, timeout=120)
+    if not r.ok:
+        raise GoogleTTSError(f"Google の読み上げエラー {r.status_code}: {r.text[:300]}")
+    tmp = Path(str(out_wav) + ".src.wav")
+    tmp.write_bytes(base64.b64decode(r.json()["audioContent"]))
+    af = ("silenceremove=start_periods=1:start_threshold=-45dB,areverse,"
+          "silenceremove=start_periods=1:start_threshold=-45dB,areverse")
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(tmp), "-af", af, "-ac", "1", "-ar", str(SR), str(out_wav)],
+                   check=True)
+    tmp.unlink()
+    log.append(f"{text}\n      読ませ方: {say}")
+
+
 def say_line(engine, text, voice, tempo, cache, out_wav, log):
-    if engine == "voicevox":
+    if engine == "google":
+        synth_google(text, voice, tempo, out_wav, log)
+    elif engine == "voicevox":
         synth_voicevox(text, int(voice), tempo, out_wav, log)
     else:
         synth(text, voice, tempo, cache, out_wav, log)
@@ -690,45 +784,75 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
 
 
 def build_for_account(config_path, story_txt, out_dir):
-    """アカウント設定の video: に従って作る。どちらの声で作ったかを voice.json に残す"""
+    """アカウント設定の video: に従って作る。声は ElevenLabs → Google(Chirp 3 HD)→ VOICEVOX の順に(ユーザー希望)、
+    使えるものを使う。どれで作ったかを voice.json に残す"""
     import json
     import yaml
-    cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))["video"]
+    acc = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
+    cfg = acc["video"]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     if (out_dir / "完成.mp4").exists() and (out_dir / "voice.json").exists():
         print("動画はできています(見本で確認済み)。作り直しません")
         return json.loads((out_dir / "voice.json").read_text(encoding="utf-8"))
-    _, pages = parse_story(story_txt)
+    title, pages = parse_story(story_txt)
     chars = sum(len(x) for pg in pages for x in pg) + 40
-    engine, reason = "voicevox", ""
-    if os.environ.get("ELEVENLABS_API_KEY"):
+    reasons = []
+    engine = None
+
+    # 1) ElevenLabs(キーがあって、今月の残りが足りるとき)
+    if cfg.get("elevenlabs_voice") and os.environ.get("ELEVENLABS_API_KEY"):
         rem = elevenlabs_remaining()
         need = int(chars * 1.6) + 200   # 読み直し(最大3回)の分も少し見込む
-        if rem is None:
-            engine, reason = "elevenlabs", "残りを確かめられず(そのまま試す)"
-        elif rem[0] >= need:
-            engine = "elevenlabs"
+        if rem is not None and rem[0] < need:
+            reasons.append(f"ElevenLabs の残りが足りない(残り{rem[0]}字・必要{need}字)")
         else:
-            reason = f"ElevenLabs の残りが足りない(残り{rem[0]}字・必要{need}字)"
-    else:
-        reason = "ElevenLabs のキーが無い"
-    if engine == "elevenlabs":
-        try:
-            build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"])
-        except ElevenLabsError as e:
-            engine, reason = "voicevox", f"ElevenLabs のエラー: {e}"
-            print(f"  {reason} → VOICEVOX で作り直します")
-    if engine == "voicevox":
+            try:
+                build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"])
+                engine = "elevenlabs"
+            except ElevenLabsError as e:
+                reasons.append(f"ElevenLabs のエラー: {e}")
+
+    # 2) Google(Chirp 3 HD): 無料枠の見張りつき
+    used = None
+    if engine is None and cfg.get("google_voice") and google_key():
+        used = google_usage_this_month()
+        ratio = (used + chars) / GOOGLE_FREE_CHARS
+        if ratio >= GOOGLE_STOP_RATIO:
+            reasons.append(f"Google の今月の使用が無料枠の{GOOGLE_STOP_RATIO:.0%}を超えたので止めた")
+            chatwork_alert(f"[info][title]⚠️Google 読み上げを自動で止めました[/title]今月の使用：{used:,}字／無料枠 {GOOGLE_FREE_CHARS:,}字（{used / GOOGLE_FREE_CHARS:.0%}）\n"
+                           f"課金を避けるため、今月の残りは VOICEVOX（無料）で作ります。ふつうは月15%前後なので、何かがおかしい可能性があります。[/info]")
+        else:
+            if used / GOOGLE_FREE_CHARS >= GOOGLE_ALERT_RATIO:
+                chatwork_alert(f"[info][title]⚠️Google 読み上げの使用が多めです[/title]今月の使用：{used:,}字／無料枠 {GOOGLE_FREE_CHARS:,}字（{used / GOOGLE_FREE_CHARS:.0%}）\n"
+                               f"{GOOGLE_STOP_RATIO:.0%}に達すると自動で止めて VOICEVOX にします。ふつうは月15%前後です。[/info]")
+            try:
+                build(story_txt, out_dir, cfg["google_voice"], cfg.get("google_rate", 1.0), cfg["theme"], engine="google")
+                engine = "google"
+            except GoogleTTSError as e:
+                reasons.append(f"Google のエラー: {e}")
+                print(f"  {reasons[-1]} → 次の声で作り直します")
+            finally:
+                record_google_usage(acc["output_dir"], GOOGLE_USED_THIS_RUN[0], title)
+    elif engine is None and cfg.get("google_voice"):
+        reasons.append("Google のキーが無い")
+
+    # 3) VOICEVOX(無料・いつでも使える)
+    if engine is None:
         build(story_txt, out_dir, str(cfg["voicevox_speaker"]), cfg.get("voicevox_tempo", 1.0), cfg["theme"],
               engine="voicevox", credit=f"VOICEVOX:{cfg['voicevox_name']}")
+        engine = "voicevox"
+
+    names = {"google": "Google", "elevenlabs": "ElevenLabs", "voicevox": "VOICEVOX"}
+    voice = {"google": cfg.get("google_voice"), "elevenlabs": cfg.get("elevenlabs_voice"),
+             "voicevox": f"{cfg['voicevox_name']}({cfg['voicevox_speaker']})"}[engine]
     rem = elevenlabs_remaining() if os.environ.get("ELEVENLABS_API_KEY") else None
-    info = {"engine": "ElevenLabs" if engine == "elevenlabs" else "VOICEVOX",
-            "voice": cfg["elevenlabs_voice"] if engine == "elevenlabs" else f"{cfg['voicevox_name']}({cfg['voicevox_speaker']})",
-            "reason": reason, "chars": chars,
+    info = {"engine": names[engine], "voice": voice, "reason": " / ".join(reasons), "chars": chars,
+            "google_used_this_month": (used or 0) + GOOGLE_USED_THIS_RUN[0] if used is not None else None,
+            "google_free_chars": GOOGLE_FREE_CHARS,
             "elevenlabs_remaining": rem[0] if rem else None, "elevenlabs_limit": rem[1] if rem else None}
     (out_dir / "voice.json").write_text(json.dumps(info, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"声: {info['engine']} {info['voice']} {reason}")
+    print(f"声: {info['engine']} {info['voice']} {info['reason']}")
     return info
 
 
@@ -740,7 +864,7 @@ def main():
     ap.add_argument("--voice", default=DEFAULT_VOICE)
     ap.add_argument("--tempo", type=float, default=1.0)
     ap.add_argument("--theme", default="story", choices=list(THEMES))
-    ap.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "voicevox"])
+    ap.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "voicevox", "google"])
     ap.add_argument("--no-sfx", action="store_true", help="効果音を入れない")
     ap.add_argument("--credit", default=None, help="画面の右下に出す表記(VOICEVOX は「VOICEVOX:キャラ名」が必要)")
     a = ap.parse_args()

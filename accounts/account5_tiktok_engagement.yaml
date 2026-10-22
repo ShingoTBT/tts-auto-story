@@ -11,6 +11,9 @@ sibling_titles_log_files:
 output_dir: "outputs/account5_tiktok"
 # 2026-10-23〜 動画で投稿(ナレーション付き。最初に早口の「意見ください！」・大きな「みんなの意見募集」の札)
 video:
+  # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
+  google_voice: "Leda"                       # ja-JP-Chirp3-HD-Leda(女性・若い)
+  google_rate: 1.15
   theme: talk
   elevenlabs_voice: "PmgfHCGeS5b7sH90BOOJ"   # Fumi(共有ライブラリ・若い女性・落ち着き)
   elevenlabs_tempo: 1.2

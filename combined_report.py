@@ -114,8 +114,22 @@ def build_voice_lines(tiktok_configs: list[str]) -> list[str]:
     if not lines:
         return []
     out = [f"■動画の声（昨日{yesterday.month}/{yesterday.day}の投稿）"] + lines
+    # Google(Chirp 3 HD)の今月の使用量。無料枠100万字の30%で警告、60%で自動停止(make_story_video.py)
+    month = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m")
+    g_used = 0
+    for f in Path("outputs").glob("*/google_tts_usage.jsonl"):
+        for raw in f.read_text(encoding="utf-8").splitlines():
+            try:
+                rec = json.loads(raw)
+            except ValueError:
+                continue
+            if rec.get("month") == month:
+                g_used += int(rec.get("chars", 0))
+    ratio = g_used / 1_000_000
+    warn = "[To:237628] ⚠️多めです（60%で自動停止→VOICEVOX）" if ratio >= 0.30 else "無料枠の中"
+    out.append(f"・Google の読み上げ：今月 {g_used:,}字／無料枠 1,000,000字（{ratio:.1%}・{warn}）")
     if latest:
-        out.append(f"・ElevenLabs の残り：{latest[1]:,}字（足りなくなると自動で VOICEVOX に切り替え）")
+        out.append(f"・ElevenLabs の残り：{latest[1]:,}字")
     return out
 
 

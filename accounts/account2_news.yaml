@@ -17,6 +17,9 @@ output_dir: "outputs/account2_news"
 # 2026-10-23〜 動画で投稿(ナレーション付き。make_story_video.py / post_video_to_tiktok.py)
 # 声は ElevenLabs、今月の残りが足りない・エラーのときは VOICEVOX(無料)。どちらを使ったかは毎朝のレポートに出る
 video:
+  # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
+  google_voice: "Puck"                       # ja-JP-Chirp3-HD-Puck(男性・明るい)
+  google_rate: 1.2
   theme: news
   elevenlabs_voice: "pUgmTF2V1ptIKsYb6qON"   # rootbuzz_2_Ryo(男性・会話調)
   elevenlabs_tempo: 1.25

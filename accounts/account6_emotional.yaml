@@ -7,6 +7,9 @@ titles_log_file: "logs/account6_emotional_titles.jsonl"
 output_dir: "outputs/account6_tiktok"
 # 2026-10-23〜 2:00・12:00・22:00 すべて涙あふれるストーリーを動画で投稿(ユーザー希望)
 video:
+  # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
+  google_voice: "Sulafat"                       # ja-JP-Chirp3-HD-Sulafat(女性・温かい)
+  google_rate: 1.0
   theme: story
   elevenlabs_voice: "4lOQ7A2l7HPuG7UIHiKA"   # Kyoko(共有ライブラリ・温かい若い女性)
   elevenlabs_tempo: 1.0
