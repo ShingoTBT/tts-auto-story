@@ -1,0 +1,9 @@
+# 依頼「ルートバズ」の TikTok 転職アカウント。元は「転職あるある_アカウント1」(@user2804137174301)。
+# 2026-10-22 にルートバズへ流用し、TikTok for Business でつなぎ直した(表示名・IDも変更)。
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)だけに使う。
+account_name: "rootbuzz_mio"
+display_name: "みお｜転職3回したOL"
+chatwork_label: "みお｜転職3回したOL"
+tiktok_url: "https://tiktok.com/@3ol76"
+zernio_api_key_env: "ZERNIO_API_KEY"  # Zernio の1つ目(アカウント2と共用)
+zernio_account_id: "6ad99962b77e43f49267be1a"
