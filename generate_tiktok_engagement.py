@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary
+from generate import claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary, use_queued_post
 
 
 def load_account_config(config_path: str) -> dict:
@@ -204,6 +204,8 @@ def _run():
         sys.exit(1)
 
     config = load_account_config(sys.argv[1])
+    if use_queued_post(config):
+        return
 
     system_prompt = load_system_prompt(config["prompt_file"])
     recent_titles = load_recent_titles(

@@ -2,7 +2,7 @@ account_name: "account6_emotional"
 display_name: "涙あふれるストーリー_アカウント6(TikTok)"
 chatwork_label: "涙あふれるストーリー_アカウント6(TikTok)"
 tiktok_url: "https://tiktok.com/@ddoo7901"
-prompt_file: "prompts/emotional_story_v3.md"
+prompt_file: "prompts/emotional_story_video_v1.md"  # 10-23 動画用に短く(約400字・約1分20秒)。画像のときは emotional_story_v3.md
 titles_log_file: "logs/account6_emotional_titles.jsonl"
 output_dir: "outputs/account6_tiktok"
 # 2026-10-23〜 2:00・12:00・22:00 すべて涙あふれるストーリーを動画で投稿(ユーザー希望)

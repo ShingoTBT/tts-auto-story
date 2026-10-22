@@ -696,6 +696,9 @@ def build_for_account(config_path, story_txt, out_dir):
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))["video"]
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    if (out_dir / "完成.mp4").exists() and (out_dir / "voice.json").exists():
+        print("動画はできています(見本で確認済み)。作り直しません")
+        return json.loads((out_dir / "voice.json").read_text(encoding="utf-8"))
     _, pages = parse_story(story_txt)
     chars = sum(len(x) for pg in pages for x in pg) + 40
     engine, reason = "voicevox", ""
