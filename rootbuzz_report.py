@@ -7,7 +7,7 @@ combined_report.py から呼ばれ、毎朝のフォロワーレポートと一�
 動画ごとに 視聴時間・完全視聴率・流入元 なども取れる(投稿の24〜48時間後から、直近7日の投稿のみ)。
 アカウント全体の表示回数・リーチは TikTok のどの API でも取れない。
 
-設定: accounts/rootbuzz_kei.yaml
+設定: accounts/rootbuzz_*.yaml(1アカウント1ファイル。--rootbuzz に並べた順にレポートに載る)
 """
 
 import os
@@ -160,41 +160,48 @@ def build_post_lines(api_key: str, account_id: str) -> tuple[list[str], dict]:
     return lines, totals
 
 
-def build_rootbuzz_report(config_path: str, timestamp_str: str) -> str:
+def build_account_section(config_path: str) -> list[str]:
     config = load_account_config(config_path)
     label = config.get("chatwork_label", config.get("display_name"))
     api_key = os.environ.get(config["zernio_api_key_env"])
-    account_id = os.environ.get(config["zernio_account_id_env"])
+    # accountId は秘密ではないので設定ファイルに直接書いてもよい(書いてあればそちらを使う)
+    account_id = config.get("zernio_account_id") or os.environ.get(config.get("zernio_account_id_env", ""))
 
+    body = [f"■{label}"]
+    if not api_key or not account_id:
+        body.append("・未接続（GitHub Secrets を確認）")
+        return body
+    try:
+        body.extend(build_account_lines(api_key, account_id))
+    except Exception as e:
+        print(f"エラー(ルートバズ {label} アカウント全体): {e}")
+        body.append("・取得エラー")
+
+    body.append(f"□直近{POST_DAYS}日の投稿（新しい順）")
+    try:
+        post_lines, totals = build_post_lines(api_key, account_id)
+        body.extend(post_lines or ["・投稿なし"])
+        body.append(f"□直近{POST_DAYS}日の合計")
+        body.append(
+            f"・再生{totals['views']}｜いいね{totals['likes']}｜コメント{totals['comments']}"
+            f"｜シェア{totals['shares']}｜保存{totals['saves']}｜新規フォロー{totals['follows']}"
+        )
+    except Exception as e:
+        print(f"エラー(ルートバズ {label} 投稿): {e}")
+        body.append("・取得エラー")
+    return body
+
+
+def build_rootbuzz_report(config_paths: list[str], timestamp_str: str) -> str:
     body = [
         "＝＝＝＝＝ルートバズレポートです＝＝＝＝＝",
         f"{timestamp_str}現在",
-        f"■アカウント全体（{label}）",
     ]
-    if not api_key or not account_id:
-        body.append("・未接続（GitHub Secrets を確認）")
-    else:
-        try:
-            body.extend(build_account_lines(api_key, account_id))
-        except Exception as e:
-            print(f"エラー(ルートバズ アカウント全体): {e}")
-            body.append("・取得エラー")
-
-        body.append("")
-        body.append(f"■直近{POST_DAYS}日の投稿（新しい順）")
-        try:
-            post_lines, totals = build_post_lines(api_key, account_id)
-            body.extend(post_lines or ["・投稿なし"])
+    for i, config_path in enumerate(config_paths):
+        if i > 0:
             body.append("")
-            body.append(f"■直近{POST_DAYS}日の合計")
-            body.append(
-                f"・再生{totals['views']}｜いいね{totals['likes']}｜コメント{totals['comments']}"
-                f"｜シェア{totals['shares']}｜保存{totals['saves']}｜新規フォロー{totals['follows']}"
-            )
-            body.append("※動画の詳しい数字は、TikTokの集計に投稿から1〜2日かかります")
-        except Exception as e:
-            print(f"エラー(ルートバズ 投稿): {e}")
-            body.append("・取得エラー")
-
+        body.extend(build_account_section(config_path))
+    body.append("")
+    body.append("※動画の詳しい数字は、TikTokの集計に投稿から1〜2日かかります")
     body.append("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
     return "\n".join(body)

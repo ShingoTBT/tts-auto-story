@@ -127,16 +127,19 @@ def build_comment_report(threads_configs: list[str], timestamp_str: str) -> str:
 
 def main():
     if "--tiktok" not in sys.argv or "--threads" not in sys.argv:
-        print("使い方: python combined_report.py --tiktok <config...> --threads <config...> [--rootbuzz <config>]")
+        print("使い方: python combined_report.py --tiktok <config...> --threads <config...> [--rootbuzz <config...>]")
         sys.exit(1)
 
-    # --rootbuzz <config> は先に取り出す(残りは今までどおりの解釈)
+    # --rootbuzz <config...> は先に取り出す(次の -- まで。残りは今までどおりの解釈)
     args = list(sys.argv)
-    rootbuzz_config = None
+    rootbuzz_configs = []
     if "--rootbuzz" in args:
         i = args.index("--rootbuzz")
-        rootbuzz_config = args[i + 1]
-        del args[i:i + 2]
+        j = i + 1
+        while j < len(args) and not args[j].startswith("--"):
+            j += 1
+        rootbuzz_configs = args[i + 1:j]
+        del args[i:j]
 
     tiktok_idx = args.index("--tiktok")
     threads_idx = args.index("--threads")
@@ -161,10 +164,10 @@ def main():
     print(comment_report)
     send_chatwork_message(cw_token, cw_room, comment_report)
 
-    if rootbuzz_config:
+    if rootbuzz_configs:
         # ルートバズのレポートで何かあっても、上の2つ(本来のレポート)には影響させない
         try:
-            rootbuzz_report = build_rootbuzz_report(rootbuzz_config, timestamp_str)
+            rootbuzz_report = build_rootbuzz_report(rootbuzz_configs, timestamp_str)
             print(rootbuzz_report)
             send_chatwork_message(cw_token, cw_room, rootbuzz_report)
         except Exception as e:
