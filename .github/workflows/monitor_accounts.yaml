@@ -30,7 +30,6 @@ jobs:
           GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
         run: >
           python monitor_accounts.py
-          accounts/account1_emotional.yaml
           accounts/account2_news.yaml
           accounts/account3_threads.yaml
           accounts/account4_threads_engagement.yaml
