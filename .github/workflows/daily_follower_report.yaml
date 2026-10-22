@@ -1,6 +1,8 @@
 name: daily_follower_report
 
 on:
+  # 2026-10-22 から本命は Xserver（alley-oop）の cron が毎朝 8:00 に送る workflow_dispatch。
+  # GitHub の定時起動は混雑で1〜2時間遅れるため、予備として残す（その日にもう送っていれば下の確認で送らない）
   schedule:
     # 毎朝8:00 JST = 前日23:00 UTC(投稿の巡回に影響しないタイミング)
     - cron: "0 23 * * *"
@@ -14,17 +16,41 @@ jobs:
   report:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
     steps:
+      # 今日（日本時間）すでに成功した実行があれば、レポートを二重に送らない
+      - name: Skip if already reported today (JST)
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(TZ=Asia/Tokyo date +%Y-%m-%dT00:00:00+09:00)
+          count=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/daily_follower_report.yaml/runs?status=success&created=>=$since&per_page=20" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print(sum(1 for r in d.get('workflow_runs',[]) if r['id']!=${{ github.run_id }}))" || echo 0)
+          echo "今日すでに成功した実行: ${count}件"
+          if [ "${count:-0}" -gt 0 ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.guard.outputs.skip != 'true'
 
       - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
       - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
         run: pip install -r requirements.txt
 
       - name: Send combined report
+        if: steps.guard.outputs.skip != 'true'
         env:
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID }}
