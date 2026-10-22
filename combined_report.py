@@ -15,6 +15,7 @@ from pathlib import Path
 import requests
 
 from report_followers import load_account_config, get_follower_count, get_follower_count_with_delta
+from rootbuzz_report import build_rootbuzz_report
 from check_and_reply_comments import (
     load_posted_threads,
     is_within_check_window,
@@ -126,18 +127,26 @@ def build_comment_report(threads_configs: list[str], timestamp_str: str) -> str:
 
 def main():
     if "--tiktok" not in sys.argv or "--threads" not in sys.argv:
-        print("使い方: python combined_report.py --tiktok <config...> --threads <config...>")
+        print("使い方: python combined_report.py --tiktok <config...> --threads <config...> [--rootbuzz <config>]")
         sys.exit(1)
 
-    tiktok_idx = sys.argv.index("--tiktok")
-    threads_idx = sys.argv.index("--threads")
+    # --rootbuzz <config> は先に取り出す(残りは今までどおりの解釈)
+    args = list(sys.argv)
+    rootbuzz_config = None
+    if "--rootbuzz" in args:
+        i = args.index("--rootbuzz")
+        rootbuzz_config = args[i + 1]
+        del args[i:i + 2]
+
+    tiktok_idx = args.index("--tiktok")
+    threads_idx = args.index("--threads")
 
     if tiktok_idx < threads_idx:
-        tiktok_configs = sys.argv[tiktok_idx + 1:threads_idx]
-        threads_configs = sys.argv[threads_idx + 1:]
+        tiktok_configs = args[tiktok_idx + 1:threads_idx]
+        threads_configs = args[threads_idx + 1:]
     else:
-        threads_configs = sys.argv[threads_idx + 1:tiktok_idx]
-        tiktok_configs = sys.argv[tiktok_idx + 1:]
+        threads_configs = args[threads_idx + 1:tiktok_idx]
+        tiktok_configs = args[tiktok_idx + 1:]
 
     cw_token = os.environ["CHATWORK_API_TOKEN"]
     cw_room = os.environ["CHATWORK_ROOM_ID"]
@@ -151,6 +160,15 @@ def main():
     comment_report = build_comment_report(threads_configs, timestamp_str)
     print(comment_report)
     send_chatwork_message(cw_token, cw_room, comment_report)
+
+    if rootbuzz_config:
+        # ルートバズのレポートで何かあっても、上の2つ(本来のレポート)には影響させない
+        try:
+            rootbuzz_report = build_rootbuzz_report(rootbuzz_config, timestamp_str)
+            print(rootbuzz_report)
+            send_chatwork_message(cw_token, cw_room, rootbuzz_report)
+        except Exception as e:
+            print(f"エラー(ルートバズレポート): {e}")
 
 
 if __name__ == "__main__":
