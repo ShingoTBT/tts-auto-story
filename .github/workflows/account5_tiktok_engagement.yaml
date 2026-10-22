@@ -60,8 +60,30 @@ jobs:
           fi
           ffmpeg -version | head -1
 
+      # 2026-10-23〜 Xserver から決まった時刻に起動する(GitHub の定時起動は遅れ・飛ばしがあるので予備)。
+      # 二重投稿しないよう、直近90分以内に作っていれば今回は何もしない
+      - name: Skip if posted within 90 minutes
+        id: guard
+        run: |
+          python - <<'EOF'
+          import json, os, datetime, yaml
+          cfg = yaml.safe_load(open("accounts/account5_tiktok_engagement.yaml", encoding="utf-8"))
+          skip = False
+          try:
+              lines = [l for l in open(cfg["titles_log_file"], encoding="utf-8") if l.strip()]
+              last = datetime.datetime.fromisoformat(json.loads(lines[-1])["generated_at"])
+              minutes = (datetime.datetime.now() - last).total_seconds() / 60
+              print(f"last post {minutes:.0f} minutes ago")
+              skip = minutes < 90
+          except Exception as e:
+              print(f"guard check failed, continue: {e}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              print("skip=" + ("true" if skip else "false"), file=f)
+          EOF
+
       - name: Generate post
         id: generate
+        if: steps.guard.outputs.skip != 'true'
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
