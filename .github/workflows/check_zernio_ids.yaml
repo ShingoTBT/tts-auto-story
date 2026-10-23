@@ -1,7 +1,7 @@
 name: check_zernio_ids
 
-# Zernio のつなぎ直し後に、TikTok アカウントの番号(accountId)と接続の種類を確かめるだけ(読み取りのみ)。
-# このブランチへの push でだけ動く。
+# Zernio の読み取りだけの確認(このブランチへの push でだけ動く)。
+# 2026-10-23: クセツヨ(アカウント5 @kyo5676)の直近の投稿ごとのコメント数とコメントの例
 on:
   push:
     branches: [check-zernio-ids]
@@ -11,23 +11,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: List accounts (read only)
+      - name: Comments on account5 (read only)
         env:
-          K1: ${{ secrets.ZERNIO_API_KEY }}
-          K3: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
-          ID2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
-          ID3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
-          ID6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
+          K: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
+          A: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
         run: |
           python3 - <<'PY'
-          import json, os, urllib.request
-          secrets = {"ACCOUNT_ID_2": os.environ["ID2"], "ACCOUNT_ID_3": os.environ["ID3"], "ACCOUNT_ID_6": os.environ["ID6"]}
-          for label, key in [("Zernio1", os.environ["K1"]), ("Zernio3", os.environ["K3"])]:
-              req = urllib.request.Request("https://zernio.com/api/v1/accounts", headers={"Authorization": f"Bearer {key}"})
-              for a in json.load(urllib.request.urlopen(req))["accounts"]:
-                  if a["platform"] != "tiktok":
-                      continue
-                  same = [n for n, v in secrets.items() if v == a["_id"]]
-                  # id は秘密ではない。Secrets と同じ値だと GitHub が *** で隠すので、文字を区切って表示する
-                  print(label, a["username"], " ".join(a["_id"]), (a.get("metadata") or {}).get("apiFlavor"), "Secretsと一致:", same or "なし")
+          import json, os, urllib.request, urllib.parse
+          K, A = os.environ["K"], os.environ["A"]
+          def get(path, **q):
+              url = "https://zernio.com/api/v1/" + path + ("?" + urllib.parse.urlencode(q) if q else "")
+              req = urllib.request.Request(url, headers={"Authorization": f"Bearer {K}"})
+              try:
+                  return json.load(urllib.request.urlopen(req, timeout=60))
+              except urllib.error.HTTPError as e:
+                  return {"error": e.code, "body": e.read().decode()[:300]}
+          d = get("analytics", platform="tiktok", accountId=A, limit=50)
+          posts = d.get("posts", [])
+          print("投稿数:", len(posts), d.get("error", ""), d.get("body", ""))
+          posts.sort(key=lambda p: p.get("publishedAt") or "", reverse=True)
+          for p in posts[:20]:
+              a = p.get("analytics") or {}
+              pid = next((pl.get("platformPostId") for pl in p.get("platforms", []) if pl.get("platformPostId")), None)
+              print(f"{(p.get('publishedAt') or '')[:16]} 再生{a.get('views')} いいね{a.get('likes')} コメント{a.get('comments')} | {(p.get('content') or '')[:40]!r} | {pid}")
+          shown = 0
+          for p in sorted(posts[:30], key=lambda p: -((p.get("analytics") or {}).get("comments") or 0)):
+              if shown >= 3 or not (p.get("analytics") or {}).get("comments"):
+                  break
+              pid = next((pl.get("platformPostId") for pl in p.get("platforms", []) if pl.get("platformPostId")), None)
+              c = get(f"inbox/comments/{pid}", accountId=A)
+              print(f"\n=== コメントの例: {(p.get('content') or '')[:40]!r}")
+              print(json.dumps(c, ensure_ascii=False)[:1500])
+              shown += 1
           PY
