@@ -36,7 +36,7 @@ MAX_CANDIDATES_TO_CHECK = 10
 ATOM_NS = "http://www.w3.org/2005/Atom"
 RSS1_NS = "http://purl.org/rss/1.0/"
 TOPIC_FILTER_DEFAULT_MODEL = "claude-sonnet-4-6"
-TOPIC_FILTER_MAX_TITLES = 80
+TOPIC_FILTER_MAX_TITLES = 240  # 10-23 芸能・スポーツの取得先を増やしたので広げた(80だと後ろの取得先が切れる)
 BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
 # 動画・SNSのページはニュース記事ではないので、ジャンル指定のときは候補に入れない
 NON_ARTICLE_DOMAINS = ("youtube.com", "youtu.be", "nicovideo.jp", "x.com", "twitter.com", "tiktok.com", "instagram.com")
@@ -196,43 +196,107 @@ def fetch_topic_items(config: dict) -> list[dict]:
     return unique
 
 
-def select_topic_items_with_ai(items: list[dict], topic: str, model: str) -> list[dict]:
-    """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる"""
+def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent_posts: list[str] = (), topic_rules=None) -> list[dict]:
+    """タイトル一覧から topic に当てはまるニュースだけを選ばせ、知名度の高い順に並べる。
+    人の不幸の話題・直近に投稿した話題と同じ人物や出来事は除く(2026-10-23 YOASOBI が3本続いたため)"""
     import anthropic
     from generate import claude_extra_params
 
     items = items[:TOPIC_FILTER_MAX_TITLES]
+    # 人の不幸の話題は、題名の言葉でも確実に外す(AIの判定だけだと残ることがあった)
+    items = [it for it in items if not SAD_WORDS.search(it["keyword"])]
     listing = "\n".join(f"{i}: {item['keyword']}" for i, item in enumerate(items))
+    recent_listing = "\n".join(f"R{i}: {t}" for i, t in enumerate(recent_posts or []))
+    rules = "".join(f"- {r}\n" for r in (topic_rules or [
+        "当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外",
+        "ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外",
+        "歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外",
+    ]))
     prompt = (
-        f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
-        "- 当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外\n"
-        "- ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外\n"
-        "- 歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外\n"
-        "- 選んだものを、TikTokの一般の視聴者が反応しやすい順(有名な人・大きな出来事・賛否が分かれる話題が先、"
-        "小さな告知やリリース情報は後)に並べる\n"
-        "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
-        f"{listing}"
+        f"以下の「記事」一覧から「{topic}」に当てはまるニュース記事だけを選んでください。\n"
+        + rules
+        + "- 訃報・病気・けが・事故・事件・逮捕など、人の不幸や不祥事が中心の記事は除外\n"
+        "- 失言・謝罪・炎上・批判・騒動・処分など、誰かが責められている話題も除外\n"
+        "選んだ記事それぞれについて [番号, 知名度, コメント, \"主役\"] を出してください。\n"
+        "- 知名度：その記事の主役が一般の人にどれだけ知られているか。5=ほぼ誰でも知っている(国民的スター・紅白常連・日本代表の顔)、"
+        "4=多くの人が知っている(地上波ドラマ主演・CM・人気グループ)、3=若い人や好きな人なら知っている、2=ファンなら知っている、1=ほとんど知られていない\n"
+        "- コメント：TikTok でこの話題を紹介したとき、コメントがどれだけ集まりそうか。5=賛否が分かれる・自分の意見や体験を言いたくなる・"
+        "ファンが熱く語りたくなる・驚きやツッコミどころがある、3=反応はあるが盛り上がりは普通、1=淡々とした告知で言うことがない\n"
+        "- 主役：その記事の中心の人物・グループの名前を、正式な名前で短く(例:\"松井秀喜\"、\"Mrs. GREEN APPLE\"、\"YOASOBI\")。"
+        "同じ人物・グループなら、どの記事でも必ず同じ書き方にする\n"
+        + ("さらに、下の「直近の投稿」それぞれについても [\"R番号\", 0, 0, \"主役\"] を同じ書き方で出してください(同じ話題を続けないために使います)。\n"
+           if recent_listing else "")
+        + "回答は JSON の配列1つだけにすること(例: [[3, 5, 4, \"松井秀喜\"], [0, 2, 3, \"INI\"], [\"R0\", 0, 0, \"YOASOBI\"]])。説明・理由・見出しは一切書かない。\n\n"
+        "【記事】\n" + listing
+        + ("\n\n【直近の投稿】\n" + recent_listing if recent_listing else "")
     )
     client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=model,
-        **claude_extra_params(model),
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    text = "".join(block.text for block in response.content if block.type == "text")
-    m = re.search(r"\[[\d,\s]*\]", text)
-    if not m:
-        raise ValueError(f"AIの回答から番号の一覧を読めませんでした: {text[:200]}")
+    rows = None
+    for attempt in range(2):   # 説明だけ書いて答えを出さないことがあるので、1回だけやり直す
+        response = client.messages.create(
+            model=model,
+            **claude_extra_params(model),
+            max_tokens=6000,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(block.text for block in response.content if block.type == "text")
+        try:
+            rows = json.loads(text[text.index("["):text.rindex("]") + 1])
+            break
+        except Exception:
+            print(f"  AIの回答を読めなかったのでやり直します: {text[:80]}")
+    if rows is None:
+        raise ValueError(f"AIの回答を読めませんでした: {text[:200]}")
+
+    # 並べ替え・同じ主役の除外はプログラムで確実に行う(10-23 AIに任せると同じ出来事が続いた)
+    def norm(name):
+        return re.sub(r"[\s・･\.\-_]|氏$|さん$|選手$|監督$", "", str(name)).lower()
+
+    used = set()
+    scored = []
+    for row in rows:
+        try:
+            key, star = row[0], norm(row[-1])
+            fame = int(row[1])
+            comment = int(row[2]) if len(row) >= 4 else 3
+        except Exception:
+            continue
+        if isinstance(key, str) and key.startswith("R"):
+            used.add(star)
+            continue
+        try:
+            idx = int(key)
+        except Exception:
+            continue
+        if 0 <= idx < len(items):
+            scored.append((fame, comment, idx, star))
+    # 並べ方(ユーザー希望 10-23): 知名度の高い人(4以上)を先に → その中でコメントが集まりそうな順 → 知名度 → 同点はランダム
+    scored.sort(key=lambda x: (-(x[0] >= 4), -x[1], -x[0], random.random()))
+    print(f"  直近の投稿の主役(続けない): {sorted(used)}")
     picked = []
-    for idx in json.loads(m.group(0)):
-        if 0 <= idx < len(items) and items[idx] not in picked:
-            picked.append(items[idx])
+    for fame, comment, idx, star in scored:
+        if star and star in used:
+            continue   # 直近に投稿した主役、またはすでに選んだ記事と同じ主役
+        picked.append(items[idx])
+        if len(picked) <= 10:
+            print(f"    知名度{fame}・コメント{comment}：{items[idx]['keyword'][:50]}")
+        if star:
+            used.add(star)
     return picked
 
 
+# 人の不幸・不祥事の話題(題名にこれらの言葉があれば選ばない)
+SAD_WORDS = re.compile(r"死去|訃報|逝去|追悼|悼む|亡くな|永眠|命日|葬儀|お別れ会|病気|闘病|がん|癌|入院|手術|重体|事故|逮捕|容疑|書類送検|不祥事|被害"
+                       # 10-23 ユーザー「失言、謝罪はやめましょう」
+                       r"|謝罪|お詫び|おわび|陳謝|炎上|失言|釈明|批判|騒動|不倫|処分|物議")
+
+
 def select_topic_items_by_keywords(items: list[dict], keywords: list[str]) -> list[dict]:
-    return [item for item in items if any(k in item["keyword"] for k in keywords)]
+    """AIが使えないときの予備。はてな(何の話題もある)の記事は、言葉が合っても音楽以外が混ざるので使わず、
+    音楽ニュースのサイト(topic_extra_rss)の記事だけを使う(10-23「5人グループで座って」などを拾ったため)"""
+    return [item for item in items if item["news_items"][0].get("source") != "はてなブックマーク"
+            and any(k in item["keyword"] for k in keywords)] or \
+           [item for item in items if item["news_items"][0].get("source") != "はてなブックマーク"]
 
 
 def extract_article_text(url: str) -> str:
@@ -276,13 +340,31 @@ def load_recent_keywords(titles_log_file: str, hours: int = 24) -> set[str]:
                 record = json.loads(line)
                 generated_at = datetime.datetime.fromisoformat(record["generated_at"])
                 if generated_at >= cutoff:
-                    # "タイトル (キーワード)" 形式にも対応
+                    # "■題名 (キーワード)" 形式にも対応(キーワードの中の「(」で切れないよう、最初の " (" で分ける)
                     title = record.get("title", "")
-                    keyword_part = title.split("(")[-1].rstrip(")") if "(" in title else title
+                    keyword_part = title.split(" (", 1)[1][:-1] if " (" in title and title.endswith(")") else title
                     keywords.add(keyword_part)
             except Exception:
                 continue
     return keywords
+
+
+def load_recent_post_titles(titles_log_file: str, hours: int = 48) -> list[str]:
+    """直近に投稿した題名(「■題名 (元の記事)」のまま)。ネタ選びの AI に渡して同じ話題を避ける"""
+    import datetime
+    path = Path(titles_log_file)
+    if not path.exists():
+        return []
+    cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
+    titles = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            record = json.loads(line)
+            if datetime.datetime.fromisoformat(record["generated_at"]) >= cutoff:
+                titles.append(record.get("title", "").lstrip("■").strip())
+        except Exception:
+            continue
+    return titles[-15:]
 
 
 def main():
@@ -292,9 +374,11 @@ def main():
 
     config = load_account_config(sys.argv[1])
 
-    recent_keywords = load_recent_keywords(config["titles_log_file"], hours=24)
+    # ジャンル指定のときは、一度使った記事を2週間使わない(10-23 同じ記事が2日後にまた選ばれたため)。それ以外は今までどおり24時間
+    reuse_hours = 24 * int(config.get("topic_reuse_days", 14)) if config.get("topic_filter") else 24
+    recent_keywords = load_recent_keywords(config["titles_log_file"], hours=reuse_hours)
     if recent_keywords:
-        print(f"直近24時間で使用済みのキーワード({len(recent_keywords)}件): {recent_keywords}")
+        print(f"直近{reuse_hours}時間で使用済みのキーワード({len(recent_keywords)}件)")
 
     # google_trend_ratio: 0.0〜1.0。Googleトレンドを使う確率。
     # 0.0 なら常にはてな、1.0 なら常にGoogle、0.5なら半々でランダムに混在。
@@ -308,8 +392,11 @@ def main():
         all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
         try:
+            recent_posts = load_recent_post_titles(config["titles_log_file"], hours=48)
+            print(f"直近2日の投稿({len(recent_posts)}件)と同じ話題は避けます")
             trend_items = select_topic_items_with_ai(
-                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL)
+                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL), recent_posts,
+                config.get("topic_filter_rules"),
             )
             print(f"AIが選んだ記事: {len(trend_items)}件")
         except Exception as e:

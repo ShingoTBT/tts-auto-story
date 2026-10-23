@@ -5,12 +5,22 @@ tiktok_url: "https://tiktok.com/@user8258702569269"
 prompt_file: "prompts/news_video_v1.md"  # 10-23 動画用に短く(約280字)。画像のときは news_v1.md
 titles_log_file: "logs/account2_news_titles.jsonl"
 google_trend_ratio: 0.0  # 0.0=はてな100%, 1.0=Google100%, 0.5=半々
-# ネタのジャンル指定(2026-10-21 ユーザーの希望)。はてな＋下のRSSから、AIが
-# ジャンルに合う記事だけを話題になりそうな順に選ぶ。消すと今までどおり(はてなの全ジャンル)
-topic_filter: "ミュージシャン・アイドル(歌手・バンド・アイドルグループ・K-POPなど)に関するニュース"
-topic_filter_model: "claude-sonnet-4-6"  # 10-21 Haiku 5.5 は音楽以外やMV動画も選んだため
+# ネタのジャンル指定。はてな＋下のRSSから、AIがジャンルに合う記事だけを選び、一般の人がよく知っている人の話題を先に並べる。
+# 消すと今までどおり(はてなの全ジャンル)。10-21 ミュージシャン・アイドルだけ → 10-23 芸能・スポーツの著名人に広げた(ユーザー希望)
+topic_filter: "芸能・スポーツの著名人(ミュージシャン・アイドル・芸人・俳優・タレント・スポーツ選手など)に関するニュース"
+topic_filter_rules:
+  - "著名人(芸能人・スポーツ選手など)が話の主役だとタイトルから読み取れるものだけを選ぶ。政治・経済・事件(芸能人やスポーツ選手が主役でないもの)・IT・アニメや漫画の作品紹介・一般人の体験談は除外"
+  - "ニュースではないもの(MV・動画そのもの、歌詞、商品紹介、個人の日記やつぶやきのまとめ)も除外"
+  - "訃報・病気・事故など、人の不幸を扱う記事も、TikTok で軽い口調で扱うのは不謹慎なので除外"
+  - "失言・謝罪・炎上・批判・騒動・処分など、誰かが責められている話題も除外(10-23 ユーザー希望)"
+topic_filter_model: "claude-sonnet-4-6"  # 10-21 Haiku 5.5 は対象外の記事も選んだため
+topic_fallback_keywords: []  # AIが使えないときは、下の専門サイト(芸能・スポーツ)の記事をそのまま使う
 topic_extra_rss:
-  - "https://natalie.mu/music/feed/news"  # 音楽ナタリー
+  - "https://news.yahoo.co.jp/rss/topics/entertainment.xml"  # Yahoo!ニュース トピックス(エンタメ)＝大きな話題
+  - "https://news.yahoo.co.jp/rss/topics/sports.xml"  # Yahoo!ニュース トピックス(スポーツ)
+  - "https://news.yahoo.co.jp/rss/categories/entertainment.xml"  # Yahoo!ニュース エンタメ
+  - "https://news.yahoo.co.jp/rss/categories/sports.xml"  # Yahoo!ニュース スポーツ
+  - "https://www.nikkansports.com/entertainment/atom.xml"  # 日刊スポーツ 芸能
   - "https://realsound.jp/music/feed"  # リアルサウンド(音楽)
   - "https://www.musicvoice.jp/feed/"  # Music Voice
 output_dir: "outputs/account2_news"
