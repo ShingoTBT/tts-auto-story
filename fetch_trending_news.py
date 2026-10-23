@@ -36,7 +36,7 @@ MAX_CANDIDATES_TO_CHECK = 10
 ATOM_NS = "http://www.w3.org/2005/Atom"
 RSS1_NS = "http://purl.org/rss/1.0/"
 TOPIC_FILTER_DEFAULT_MODEL = "claude-sonnet-4-6"
-TOPIC_FILTER_MAX_TITLES = 80
+TOPIC_FILTER_MAX_TITLES = 240  # 10-23 芸能・スポーツの取得先を増やしたので広げた(80だと後ろの取得先が切れる)
 BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0 Safari/537.36"
 # 動画・SNSのページはニュース記事ではないので、ジャンル指定のときは候補に入れない
 NON_ARTICLE_DOMAINS = ("youtube.com", "youtu.be", "nicovideo.jp", "x.com", "twitter.com", "tiktok.com", "instagram.com")
@@ -196,7 +196,7 @@ def fetch_topic_items(config: dict) -> list[dict]:
     return unique
 
 
-def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent_posts: list[str] = ()) -> list[dict]:
+def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent_posts: list[str] = (), topic_rules=None) -> list[dict]:
     """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる。
     recent_posts(直近に投稿した題名)と同じアーティスト・同じ出来事の記事は選ばせない(2026-10-23 YOASOBI が3本続いたため)"""
     import anthropic
@@ -204,15 +204,18 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
 
     items = items[:TOPIC_FILTER_MAX_TITLES]
     listing = "\n".join(f"{i}: {item['keyword']}" for i, item in enumerate(items))
+    rules = "".join(f"- {r}\n" for r in (topic_rules or [
+        "当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外",
+        "ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外",
+        "歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外",
+    ]))
     prompt = (
         f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
-        "- 当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外\n"
-        "- ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外\n"
-        "- 歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外\n"
-        "- 選んだものを、TikTokの一般の視聴者が反応しやすい順(有名な人・大きな出来事・賛否が分かれる話題が先、"
-        "小さな告知やリリース情報は後)に並べる\n"
-        "- 同じアーティスト・グループの記事が複数あるときは、いちばん良い1本だけを選ぶ\n"
-        + ("- 次は直近2日に投稿した話題。これらと同じアーティスト・グループ、または同じ出来事を扱う記事は、"
+        + rules
+        + "- 選んだものを、次の順に並べる:(1)一般の人の多くが名前を知っている著名人(紅白・地上波ドラマ・CM・五輪や日本代表に出るくらい)の話題を先に、"
+          "ファンしか知らない人の話題は後に (2)同じくらいなら、驚き・賛否・感動など反応が集まりやすい出来事を先に、小さな告知やリリース情報は後に\n"
+        + "- 同じ人物・グループの記事が複数あるときは、いちばん良い1本だけを選ぶ\n"
+        + ("- 次は直近2日に投稿した話題。これらと同じ人物・グループ、または同じ出来事を扱う記事は、"
            "記事が違っても選ばない(視聴者が同じ話題ばかりと感じないように)\n"
            + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "")
         + "回答は番号のJSON配列1つだけにすること(例: [3, 0, 12])。説明・理由・見出しは一切書かない。当てはまるものが無ければ []。\n\n"
@@ -346,7 +349,8 @@ def main():
             recent_posts = load_recent_post_titles(config["titles_log_file"], hours=48)
             print(f"直近2日の投稿({len(recent_posts)}件)と同じ話題は避けます")
             trend_items = select_topic_items_with_ai(
-                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL), recent_posts
+                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL), recent_posts,
+                config.get("topic_filter_rules"),
             )
             print(f"AIが選んだ記事: {len(trend_items)}件")
         except Exception as e:
