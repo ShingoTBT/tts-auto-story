@@ -64,20 +64,84 @@ def recent_music(log_path: Path, n: int = 5) -> set:
     return set(used)
 
 
+MUSIC_CACHE = Path("outputs/music_cache.json")
+# 一覧が空のときの控え(10-22 に一覧から取れた曲と、実際に投稿で使えた曲。clip.id)。
+# 10-23 朝から Zernio の商用曲の一覧がどのアカウントでも空で返り、全部の投稿が止まったため
+MUSIC_FALLBACK = [
+    # 実際に投稿で使えた曲
+    {"id": "7317215175366690817", "name": "2:23 AM / しゃろう", "genres": ["HIP_HOP/RAP", "ALTERNATIVE_HIP_HOP"]},
+    {"id": "7316669896233650177", "name": "怪しい屋敷を探索する的なBGM / 鷹尾まさき", "genres": ["POP"]},
+    {"id": "7467109171273517073", "name": "おつかれさまのうた / kimimi", "genres": ["POP", "CHINESE_POP"]},
+    {"id": "6873874436664084482", "name": "Forgiveness / Renee Michele", "genres": ["POP", "EASY_LISTENING"]},
+    {"id": "7441962111373576209", "name": "Pray For The Lost / Worship Tree", "genres": ["NEW_AGE"]},
+    {"id": "7210601088247711745", "name": "Land / Adrián Berenguer", "genres": ["NEW_AGE", "CLASSICAL"]},
+    {"id": "6817195494956075009", "name": "Piano famous song Chopin / RYOpianoforte", "genres": ["CLASSICAL"]},
+    {"id": "7488898663911442449", "name": "Little Love Song / kixx John", "genres": ["POP", "INDIE_POP"]},
+    {"id": "7031666552407590913", "name": "Happy Light Jazz - Cafe3 / Kobat", "genres": ["JAZZ", "EASY_LISTENING"]},
+    # 10-22 の一覧にあった曲
+    {"id": "7665652448522274832", "name": "Tokimeki Records", "genres": ["POP"]},
+    {"id": "7540525792741853201", "name": "Nana's room", "genres": ["POP", "INDIE_POP"]},
+    {"id": "7478947357292824577", "name": "CopyA", "genres": ["POP"]},
+    {"id": "7315927291699595266", "name": "shimtone", "genres": ["POP"]},
+    {"id": "7314370276128704514", "name": "sanusagi", "genres": ["POP"]},
+    {"id": "7423305583476475920", "name": "みずかげりんぶ", "genres": ["ELECTRONIC"]},
+    {"id": "7637031538719606785", "name": "DJBENNY", "genres": ["POP", "DANCE_POP"]},
+    {"id": "7464737604120283152", "name": "edivieira", "genres": ["ELECTRONIC", "TROPICAL_HOUSE"]},
+    {"id": "6799249427404949505", "name": "Kaleidoscope / Adrián Berenguer", "genres": ["NEW_AGE"]},
+    {"id": "7453840990354376721", "name": "Sad Waves", "genres": ["NEW_AGE"]},
+    {"id": "7063427211096754177", "name": "Adrián Berenguer", "genres": ["CLASSICAL"]},
+    {"id": "6817660390311200770", "name": "arachang", "genres": ["EASY_LISTENING"]},
+    {"id": "6817359039727405058", "name": "SOUND BANK", "genres": ["JAZZ"]},
+    {"id": "6849405904635299841", "name": "Matt Larsson", "genres": ["JAZZ"]},
+]
+
+
+def list_tracks(headers: dict, account_id: str) -> list:
+    """商用曲の一覧(clip のあるものだけ)。空なら1回やり直し、それでも空なら控えを使う"""
+    import time
+    for attempt in range(2):
+        try:
+            r = requests.get(f"{ZERNIO_API_BASE}/accounts/{account_id}/tiktok/commercial-music",
+                             params={"countryCode": "JP"}, headers=headers, timeout=60)
+            r.raise_for_status()
+            tracks = [{"id": t["clip"]["id"], "name": f"{t.get('name') or ''} / {t.get('artist') or ''}",
+                       "genres": t.get("genres") or [], "sec": t["clip"].get("durationSec") or 0}
+                      for t in r.json().get("tracks", []) if (t.get("clip") or {}).get("id")]
+        except Exception as e:
+            print(f"  商用曲の一覧を取れませんでした: {e}")
+            tracks = []
+        if tracks:
+            try:   # 取れたときは控えを新しくしておく(次に空だったとき用)
+                MUSIC_CACHE.parent.mkdir(parents=True, exist_ok=True)
+                MUSIC_CACHE.write_text(json.dumps({"saved_at": datetime.date.today().isoformat(), "tracks": tracks},
+                                                  ensure_ascii=False, indent=1), encoding="utf-8")
+            except Exception:
+                pass
+            return tracks
+        time.sleep(5)
+    if MUSIC_CACHE.exists():
+        try:
+            cached = json.loads(MUSIC_CACHE.read_text(encoding="utf-8")).get("tracks") or []
+            if cached:
+                print(f"  商用曲の一覧が空 → 前に取れた一覧の控え({len(cached)}曲)を使います")
+                return cached
+        except Exception:
+            pass
+    print(f"  商用曲の一覧が空 → 決めてある控え({len(MUSIC_FALLBACK)}曲)を使います")
+    return MUSIC_FALLBACK
+
+
 def pick_music(headers: dict, account_id: str, genres: list, video_sec: float, avoid: set, exclude_words=()):
-    """商用曲から、ジャンルが合う曲を選ぶ(曲名に exclude_words を含むものは除く)。合う曲が無ければ上位の曲から選ぶ"""
-    r = requests.get(f"{ZERNIO_API_BASE}/accounts/{account_id}/tiktok/commercial-music",
-                     params={"countryCode": "JP"}, headers=headers, timeout=60)
-    r.raise_for_status()
-    tracks = [t for t in r.json().get("tracks", []) if (t.get("clip") or {}).get("id")]
-    want = set(genres or [])
+    """商用曲から、ジャンルが合う曲を選ぶ(曲名に exclude_words を含むものは除く)"""
+    tracks = list_tracks(headers, account_id)
     ng = [w.lower() for w in exclude_words or []]
-    tracks = [t for t in tracks if not any(w in (t.get("name") or "").lower() for w in ng)]
+    tracks = [t for t in tracks if not any(w in (t.get("name") or "").lower() for w in ng)] or tracks
+    want = set(genres or [])
     match = [t for t in tracks if want & set(t.get("genres") or [])] or tracks[:30]
-    long_enough = [t for t in match if (t["clip"].get("durationSec") or 0) >= video_sec] or match
-    fresh = [t for t in long_enough if t["clip"]["id"] not in avoid] or long_enough
+    long_enough = [t for t in match if (t.get("sec") or 999) >= video_sec] or match
+    fresh = [t for t in long_enough if t["id"] not in avoid] or long_enough
     t = random.choice(fresh[:20])
-    return t["clip"]["id"], f"{t.get('name') or ''} / {t.get('artist') or ''}"
+    return t["id"], t.get("name") or ""
 
 
 def video_seconds(path: Path) -> float:

@@ -493,10 +493,15 @@ def load_sfx(name, gain_db, work):
     if not src and base:
         dl = work / "sfx_src" / name
         dl.parent.mkdir(parents=True, exist_ok=True)
-        if not dl.exists():
-            r = requests.get(base.rstrip("/") + "/" + name, timeout=60)
-            if r.ok:
-                dl.write_bytes(r.content)
+        for attempt in range(3):   # 10-23 GitHub から Xserver につながらず時間切れ → やり直し、だめなら効果音なし
+            if dl.exists():
+                break
+            try:
+                r = requests.get(base.rstrip("/") + "/" + name, timeout=20)
+                if r.ok:
+                    dl.write_bytes(r.content)
+            except Exception as e:
+                print(f"  効果音を取れませんでした({attempt + 1}回目): {name} {e}")
         if dl.exists():
             src = dl
     if not src:
