@@ -1,0 +1,74 @@
+name: comment_responder
+
+# TikTok のコメントに、いいねと絵文字1つの返信を付ける(2026-10-23〜 ユーザー希望。1時間に1回)。
+# 本命は Xserver(alley-oop)の cron「毎時40分」からの workflow_dispatch。GitHub の定時起動は予備。
+# 対象: アカウント2(ニュース)・5(クセツヨ)・6(涙あふれる)。
+# Threads(アカウント3・4)には付けない(自分がコメントした投稿には広告コメントを付けない決まりがあるため)
+on:
+  schedule:
+    - cron: "45 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: comment-responder
+  cancel-in-progress: false
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # 二重に動かないよう、直近40分以内に動いていれば何もしない
+      - name: Skip if ran within 40 minutes
+        id: guard
+        run: |
+          python3 - <<'PY'
+          import os, subprocess, datetime
+          out = subprocess.run(["git", "log", "-1", "--format=%ct", "--grep=comment responder"], capture_output=True, text=True).stdout.strip()
+          skip = False
+          if out:
+              minutes = (datetime.datetime.now().timestamp() - int(out)) / 60
+              print(f"last run {minutes:.0f} minutes ago")
+              skip = minutes < 40
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              print("skip=" + ("true" if skip else "false"), file=f)
+          PY
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
+        run: pip install pyyaml requests
+
+      - name: Like and reply to new comments
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
+          ZERNIO_API_KEY_ACCOUNT5: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
+        run: python reply_comments_tiktok.py accounts/account5_tiktok_engagement.yaml accounts/account2_news.yaml accounts/account6_emotional.yaml
+
+      - name: Commit reply log
+        if: always() && steps.guard.outputs.skip != 'true'
+        run: |
+          set +e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git commit --allow-empty -q -m "chore: comment responder ($(date +'%Y-%m-%d %H:%M'))"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && exit 0
+            git rebase --abort >/dev/null 2>&1
+            sleep $((RANDOM % 5 + 2))
+          done
+          echo "::error::comment responder push failed"
+          exit 1
