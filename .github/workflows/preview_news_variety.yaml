@@ -1,0 +1,37 @@
+name: preview_news_variety
+
+# ニュースのネタ選び(同じ話題を続けない)の試し。記事を選ぶだけで、文章も動画も作らず投稿もしない。
+# ブランチ news-variety への push でだけ動く。
+on:
+  push:
+    branches: [news-variety]
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Pick news 3 times in a row (no posting)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, datetime, shutil, subprocess, yaml
+          c = yaml.safe_load(open("accounts/account2_news.yaml", encoding="utf-8"))
+          c["output_dir"] = "/tmp/news_preview"
+          shutil.copy(c["titles_log_file"], "/tmp/titles.jsonl")
+          c["titles_log_file"] = "/tmp/titles.jsonl"
+          yaml.safe_dump(c, open("/tmp/cfg.yaml", "w", encoding="utf-8"), allow_unicode=True)
+          for n in range(1, 4):
+              print(f"===== {n}回目 =====", flush=True)
+              subprocess.run(["python", "fetch_trending_news.py", "/tmp/cfg.yaml"], check=False)
+              cand = json.load(open("/tmp/news_preview/trend_candidate.json", encoding="utf-8"))
+              # 次の回のために「投稿した」ことにする(題名は仮に記事名)
+              with open("/tmp/titles.jsonl", "a", encoding="utf-8") as f:
+                  f.write(json.dumps({"title": f"■(試し) ({cand['keyword']})", "generated_at": datetime.datetime.now().isoformat()}, ensure_ascii=False) + "\n")
+          PY

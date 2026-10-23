@@ -196,8 +196,9 @@ def fetch_topic_items(config: dict) -> list[dict]:
     return unique
 
 
-def select_topic_items_with_ai(items: list[dict], topic: str, model: str) -> list[dict]:
-    """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる"""
+def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent_posts: list[str] = ()) -> list[dict]:
+    """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる。
+    recent_posts(直近に投稿した題名)と同じアーティスト・同じ出来事の記事は選ばせない(2026-10-23 YOASOBI が3本続いたため)"""
     import anthropic
     from generate import claude_extra_params
 
@@ -210,7 +211,11 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str) -> lis
         "- 歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外\n"
         "- 選んだものを、TikTokの一般の視聴者が反応しやすい順(有名な人・大きな出来事・賛否が分かれる話題が先、"
         "小さな告知やリリース情報は後)に並べる\n"
-        "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
+        "- 同じアーティスト・グループの記事が複数あるときは、いちばん良い1本だけを選ぶ\n"
+        + ("- 次は直近2日に投稿した話題。これらと同じアーティスト・グループ、または同じ出来事を扱う記事は、"
+           "記事が違っても選ばない(視聴者が同じ話題ばかりと感じないように)\n"
+           + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "")
+        + "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
         f"{listing}"
     )
     client = anthropic.Anthropic()
@@ -276,13 +281,31 @@ def load_recent_keywords(titles_log_file: str, hours: int = 24) -> set[str]:
                 record = json.loads(line)
                 generated_at = datetime.datetime.fromisoformat(record["generated_at"])
                 if generated_at >= cutoff:
-                    # "タイトル (キーワード)" 形式にも対応
+                    # "■題名 (キーワード)" 形式にも対応(キーワードの中の「(」で切れないよう、最初の " (" で分ける)
                     title = record.get("title", "")
-                    keyword_part = title.split("(")[-1].rstrip(")") if "(" in title else title
+                    keyword_part = title.split(" (", 1)[1][:-1] if " (" in title and title.endswith(")") else title
                     keywords.add(keyword_part)
             except Exception:
                 continue
     return keywords
+
+
+def load_recent_post_titles(titles_log_file: str, hours: int = 48) -> list[str]:
+    """直近に投稿した題名(「■題名 (元の記事)」のまま)。ネタ選びの AI に渡して同じ話題を避ける"""
+    import datetime
+    path = Path(titles_log_file)
+    if not path.exists():
+        return []
+    cutoff = datetime.datetime.now() - datetime.timedelta(hours=hours)
+    titles = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            record = json.loads(line)
+            if datetime.datetime.fromisoformat(record["generated_at"]) >= cutoff:
+                titles.append(record.get("title", "").lstrip("■").strip())
+        except Exception:
+            continue
+    return titles[-15:]
 
 
 def main():
@@ -292,9 +315,11 @@ def main():
 
     config = load_account_config(sys.argv[1])
 
-    recent_keywords = load_recent_keywords(config["titles_log_file"], hours=24)
+    # ジャンル指定のときは、一度使った記事を2週間使わない(10-23 同じ記事が2日後にまた選ばれたため)。それ以外は今までどおり24時間
+    reuse_hours = 24 * int(config.get("topic_reuse_days", 14)) if config.get("topic_filter") else 24
+    recent_keywords = load_recent_keywords(config["titles_log_file"], hours=reuse_hours)
     if recent_keywords:
-        print(f"直近24時間で使用済みのキーワード({len(recent_keywords)}件): {recent_keywords}")
+        print(f"直近{reuse_hours}時間で使用済みのキーワード({len(recent_keywords)}件)")
 
     # google_trend_ratio: 0.0〜1.0。Googleトレンドを使う確率。
     # 0.0 なら常にはてな、1.0 なら常にGoogle、0.5なら半々でランダムに混在。
@@ -308,8 +333,10 @@ def main():
         all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
         try:
+            recent_posts = load_recent_post_titles(config["titles_log_file"], hours=48)
+            print(f"直近2日の投稿({len(recent_posts)}件)と同じ話題は避けます")
             trend_items = select_topic_items_with_ai(
-                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL)
+                all_items, topic, config.get("topic_filter_model", TOPIC_FILTER_DEFAULT_MODEL), recent_posts
             )
             print(f"AIが選んだ記事: {len(trend_items)}件")
         except Exception as e:
