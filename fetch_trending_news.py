@@ -203,23 +203,29 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
     from generate import claude_extra_params
 
     items = items[:TOPIC_FILTER_MAX_TITLES]
+    # 人の不幸の話題は、題名の言葉でも確実に外す(AIの判定だけだと残ることがあった)
+    items = [it for it in items if not SAD_WORDS.search(it["keyword"])]
     listing = "\n".join(f"{i}: {item['keyword']}" for i, item in enumerate(items))
+    recent_listing = "\n".join(f"R{i}: {t}" for i, t in enumerate(recent_posts or []))
     rules = "".join(f"- {r}\n" for r in (topic_rules or [
         "当てはまらないもの(俳優・芸人・声優・アニメ・漫画・映画・ゲーム・スポーツ・政治・ITなど)は除外",
         "ニュースではないもの(MV・楽曲そのものの動画、歌詞、商品紹介、個人の日記)も除外",
         "歌手・バンド・アイドルなどの音楽の担い手が話の主役だとタイトルから読み取れるものだけを選ぶ。迷ったら除外",
     ]))
     prompt = (
-        f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
+        f"以下の「記事」一覧から「{topic}」に当てはまるニュース記事だけを選んでください。\n"
         + rules
-        + "選んだ記事それぞれについて [番号, 知名度, 除外] を出してください。\n"
-        "- 知名度：その記事の主役が、一般の人にどれだけ知られているか。5=ほぼ誰でも知っている(紅白常連・国民的スター・日本代表の顔)、"
+        + "- 訃報・病気・けが・事故・事件・逮捕など、人の不幸や不祥事が中心の記事は除外\n"
+        "選んだ記事それぞれについて [番号, 知名度, \"主役\"] を出してください。\n"
+        "- 知名度：その記事の主役が一般の人にどれだけ知られているか。5=ほぼ誰でも知っている(国民的スター・紅白常連・日本代表の顔)、"
         "4=多くの人が知っている(地上波ドラマ主演・CM・人気グループ)、3=若い人や好きな人なら知っている、2=ファンなら知っている、1=ほとんど知られていない\n"
-        "- 除外：次のどれかなら 1、それ以外は 0。(a)訃報・病気・けが・事故・事件の被害など人の不幸が中心の話題 "
-        + ("(b)次の直近2日に投稿した話題と同じ人物・グループ、または同じ出来事(記事が違っても)\n"
-           + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "\n")
-        + "回答は JSON の配列1つだけにすること(例: [[3, 5, 0], [0, 2, 1]])。説明・理由・見出しは一切書かない。当てはまる記事が無ければ []。\n\n"
-        f"{listing}"
+        "- 主役：その記事の中心の人物・グループの名前を、正式な名前で短く(例:\"松井秀喜\"、\"Mrs. GREEN APPLE\"、\"YOASOBI\")。"
+        "同じ人物・グループなら、どの記事でも必ず同じ書き方にする\n"
+        + ("さらに、下の「直近の投稿」それぞれについても [\"R番号\", 0, \"主役\"] を同じ書き方で出してください(同じ話題を続けないために使います)。\n"
+           if recent_listing else "")
+        + "回答は JSON の配列1つだけにすること(例: [[3, 5, \"松井秀喜\"], [0, 2, \"INI\"], [\"R0\", 0, \"YOASOBI\"]])。説明・理由・見出しは一切書かない。\n\n"
+        "【記事】\n" + listing
+        + ("\n\n【直近の投稿】\n" + recent_listing if recent_listing else "")
     )
     client = anthropic.Anthropic()
     rows = None
@@ -227,7 +233,7 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
         response = client.messages.create(
             model=model,
             **claude_extra_params(model),
-            max_tokens=4096,
+            max_tokens=6000,
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(block.text for block in response.content if block.type == "text")
@@ -239,50 +245,40 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
     if rows is None:
         raise ValueError(f"AIの回答を読めませんでした: {text[:200]}")
 
-    # 並べ替えと除外はプログラムで確実に行う(10-23 AIに任せると訃報が残る・知名度順にならない・同じ出来事を続けて選んだ)
+    # 並べ替え・同じ主役の除外はプログラムで確実に行う(10-23 AIに任せると同じ出来事が続いた)
+    def norm(name):
+        return re.sub(r"[\s・･\.\-_]|氏$|さん$|選手$|監督$", "", str(name)).lower()
+
+    used = set()
     scored = []
     for row in rows:
         try:
-            idx, fame, ng = int(row[0]), int(row[1]), int(row[2])
+            key, fame, star = row[0], int(row[1]), norm(row[2])
         except Exception:
             continue
-        if 0 <= idx < len(items) and not ng:
-            scored.append((fame, idx))
+        if isinstance(key, str) and key.startswith("R"):
+            used.add(star)
+            continue
+        try:
+            idx = int(key)
+        except Exception:
+            continue
+        if 0 <= idx < len(items):
+            scored.append((fame, idx, star))
     scored.sort(key=lambda x: -x[0])   # 知名度の高い順(同じなら AI の並び順)
-    picked, used_names = [], recent_names(recent_posts)
-    for fame, idx in scored:
-        item = items[idx]
-        names = title_names(item["keyword"])
-        if names & used_names:
-            continue   # 直近の投稿や、すでに選んだ記事と同じ人物・出来事
-        picked.append(item)
-        used_names |= names
+    print(f"  直近の投稿の主役(続けない): {sorted(used)}")
+    picked = []
+    for fame, idx, star in scored:
+        if star and star in used:
+            continue   # 直近に投稿した主役、またはすでに選んだ記事と同じ主役
+        picked.append(items[idx])
+        if star:
+            used.add(star)
     return picked
 
 
-# 同じ人物・出来事かどうかを、題名の中の固有名らしい言葉(漢字・カタカナ・英字が4文字以上続くもの)で見分ける
-_COMMON_WORDS = {
-    "ニュース", "アルバム", "シングル", "ツアー", "ライブ", "コンサート", "スポーツ", "日刊スポーツ", "スポーツ報知",
-    "オリコン", "ドラマ", "インタビュー", "オフィシャルレポート", "リリース", "メンバー", "グループ", "デビュー",
-    "YouTube", "TikTok", "Instagram", "ABEMA", "TIMES", "PRIME", "週刊女性PRIME", "Yahoo", "NHKニュース",
-    "公開決定", "開催決定", "発売決定", "初登場", "新曲配信", "日本代表", "代表選手", "記者会見",
-    "レジェンド", "電撃就任", "ギャップ", "サプライズ", "ファン歓喜",
-}
-
-
-def title_names(title: str) -> set:
-    t = re.split(r" - | \| |（|\(", title)[0]
-    words = set(re.findall(r"[一-龯々ァ-ヴー・A-Za-z0-9＆&]{4,}", t))
-    return {w for w in words if w not in _COMMON_WORDS and not w.isdigit()}
-
-
-def recent_names(recent_posts) -> set:
-    names = set()
-    for t in recent_posts or []:
-        # 「題名 (元の記事)」の両方から拾う
-        for part in t.split(" (", 1):
-            names |= title_names(part.rstrip(")"))
-    return names
+# 人の不幸・不祥事の話題(題名にこれらの言葉があれば選ばない)
+SAD_WORDS = re.compile(r"死去|訃報|逝去|追悼|悼む|亡くな|永眠|命日|葬儀|お別れ会|病気|闘病|がん|癌|入院|手術|重体|事故|逮捕|容疑|書類送検|不祥事|被害")
 
 
 def select_topic_items_by_keywords(items: list[dict], keywords: list[str]) -> list[dict]:
