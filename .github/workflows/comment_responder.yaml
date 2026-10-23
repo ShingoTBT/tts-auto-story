@@ -2,7 +2,7 @@ name: comment_responder
 
 # TikTok のコメントに、いいねと絵文字1つの返信を付ける(2026-10-23〜 ユーザー希望。1時間に1回)。
 # 本命は Xserver(alley-oop)の cron「毎時40分」からの workflow_dispatch。GitHub の定時起動は予備。
-# 対象: アカウント2(ニュース)・5(クセツヨ)・6(涙あふれる)。
+# 対象: アカウント2(ニュース)・5(クセツヨ)・6(涙あふれる)。ルートバズのケイ・みお・りな(2026-10-23〜 ユーザー希望)。
 # Threads(アカウント3・4)には付けない(自分がコメントした投稿には広告コメントを付けない決まりがあるため)
 on:
   schedule:
@@ -55,7 +55,9 @@ jobs:
           ZERNIO_API_KEY_ACCOUNT5: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
           ZERNIO_TIKTOK_ACCOUNT_ID_3: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
           ZERNIO_TIKTOK_ACCOUNT_ID_6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
-        run: python reply_comments_tiktok.py accounts/account5_tiktok_engagement.yaml accounts/account2_news.yaml accounts/account6_emotional.yaml
+          ZERNIO_API_KEY_ROOTBUZZ: ${{ secrets.ZERNIO_API_KEY_ROOTBUZZ }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ }}
+        run: python reply_comments_tiktok.py accounts/account5_tiktok_engagement.yaml accounts/account2_news.yaml accounts/account6_emotional.yaml accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml
 
       - name: Commit reply log
         if: always() && steps.guard.outputs.skip != 'true'

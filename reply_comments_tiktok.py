@@ -10,7 +10,7 @@ Xserver(alley-oop)の cron から1時間に1回 comment_responder.yaml が起動
 - 自分のコメント・自分がすでに返信したコメントには付けない。対応したコメントは
   <output_dir>/comment_replies.jsonl に記録して、二度付けしない
 - 機械的に見えないよう、1件ごとに数秒あけ、1回に付けるのは MAX_PER_RUN 件まで
-必要な環境変数: アカウント設定の zernio_api_key_env / zernio_account_id_env
+必要な環境変数: アカウント設定の zernio_api_key_env / zernio_account_id_env(zernio_account_id を直接書いてもよい)
 """
 import datetime
 import json
@@ -43,11 +43,11 @@ def run_account(config_path):
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     label = cfg.get("chatwork_label", cfg.get("display_name"))
     key = os.environ.get(cfg.get("zernio_api_key_env", "ZERNIO_API_KEY"))
-    acc = os.environ.get(cfg.get("zernio_account_id_env", ""))
+    acc = cfg.get("zernio_account_id") or os.environ.get(cfg.get("zernio_account_id_env", ""))
     if not key or not acc:
         print(f"[{label}] 合鍵かアカウントIDが無いので飛ばします")
         return
-    log = Path(cfg["output_dir"]) / "comment_replies.jsonl"
+    log = Path(cfg.get("output_dir") or f"outputs/{cfg['account_name']}") / "comment_replies.jsonl"
     done = set()
     if log.exists():
         for line in log.read_text(encoding="utf-8").splitlines():
@@ -67,6 +67,17 @@ def run_account(config_path):
         pid = next((pl.get("platformPostId") for pl in p.get("platforms", []) if pl.get("platformPostId")), None)
         if pid and when >= since:
             posts.append((when, pid, (p.get("content") or "")[:30]))
+    # analytics には投稿の 24〜48 時間後からしか出ないので、コメントの付いた投稿の一覧も足す(出したばかりの動画のコメントも拾う)
+    known = {pid for _, pid, _ in posts}
+    st, data = call("GET", "inbox/comments", key, params={"accountId": acc})
+    for p in data.get("data", []) if st == 200 else []:
+        try:
+            when = datetime.datetime.fromisoformat((p.get("createdTime") or "").replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if p.get("id") and p["id"] not in known and when >= since and p.get("commentCount"):
+            posts.append((when, p["id"], (p.get("content") or "")[:30]))
+            known.add(p["id"])
     print(f"[{label}] 直近{DAYS}日の投稿: {len(posts)}本")
 
     count = 0

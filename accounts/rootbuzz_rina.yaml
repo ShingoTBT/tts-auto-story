@@ -1,5 +1,5 @@
 # 依頼「ルートバズ」の TikTok アカウント「りな｜マチアプで婚約した30歳」(マッチングアプリ・女性の婚活向け。2026-10-23 新規作成)
-# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)だけに使う。
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
 account_name: "rootbuzz_rina"
 display_name: "りな｜マチアプで婚約した30歳"
 chatwork_label: "りな｜マチアプで婚約した30歳"
