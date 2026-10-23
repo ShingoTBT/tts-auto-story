@@ -197,8 +197,8 @@ def fetch_topic_items(config: dict) -> list[dict]:
 
 
 def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent_posts: list[str] = (), topic_rules=None) -> list[dict]:
-    """タイトル一覧から topic に当てはまるニュースだけを、話題になりそうな順に選ばせる。
-    recent_posts(直近に投稿した題名)と同じアーティスト・同じ出来事の記事は選ばせない(2026-10-23 YOASOBI が3本続いたため)"""
+    """タイトル一覧から topic に当てはまるニュースだけを選ばせ、知名度の高い順に並べる。
+    人の不幸の話題・直近に投稿した話題と同じ人物や出来事は除く(2026-10-23 YOASOBI が3本続いたため)"""
     import anthropic
     from generate import claude_extra_params
 
@@ -212,37 +212,77 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
     prompt = (
         f"以下はニュース・記事のタイトル一覧です。「{topic}」に当てはまるニュース記事だけを選んでください。\n"
         + rules
-        + "- 選んだものを、次の順に並べる:(1)一般の人の多くが名前を知っている著名人(紅白・地上波ドラマ・CM・五輪や日本代表に出るくらい)の話題を先に、"
-          "ファンしか知らない人の話題は後に (2)同じくらいなら、驚き・賛否・感動など反応が集まりやすい出来事を先に、小さな告知やリリース情報は後に\n"
-        + "- 同じ人物・グループの記事が複数あるときは、いちばん良い1本だけを選ぶ\n"
-        + ("- 次は直近2日に投稿した話題。これらと同じ人物・グループ、または同じ出来事を扱う記事は、"
-           "記事が違っても選ばない(視聴者が同じ話題ばかりと感じないように)\n"
-           + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "")
-        + "回答は番号のJSON配列1つだけにすること(例: [3, 0, 12])。説明・理由・見出しは一切書かない。当てはまるものが無ければ []。\n\n"
+        + "選んだ記事それぞれについて [番号, 知名度, 除外] を出してください。\n"
+        "- 知名度：その記事の主役が、一般の人にどれだけ知られているか。5=ほぼ誰でも知っている(紅白常連・国民的スター・日本代表の顔)、"
+        "4=多くの人が知っている(地上波ドラマ主演・CM・人気グループ)、3=若い人や好きな人なら知っている、2=ファンなら知っている、1=ほとんど知られていない\n"
+        "- 除外：次のどれかなら 1、それ以外は 0。(a)訃報・病気・けが・事故・事件の被害など人の不幸が中心の話題 "
+        + ("(b)次の直近2日に投稿した話題と同じ人物・グループ、または同じ出来事(記事が違っても)\n"
+           + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "\n")
+        + "回答は JSON の配列1つだけにすること(例: [[3, 5, 0], [0, 2, 1]])。説明・理由・見出しは一切書かない。当てはまる記事が無ければ []。\n\n"
         f"{listing}"
     )
     client = anthropic.Anthropic()
-    arrays = []
-    for attempt in range(2):   # 説明だけ書いて番号を出さないことがあるので、1回だけやり直す
+    rows = None
+    for attempt in range(2):   # 説明だけ書いて答えを出さないことがあるので、1回だけやり直す
         response = client.messages.create(
             model=model,
             **claude_extra_params(model),
-            max_tokens=2048,
+            max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
         text = "".join(block.text for block in response.content if block.type == "text")
-        # 説明が混ざっても、最後に書かれた番号の一覧を使う
-        arrays = re.findall(r"\[[\d,\s]*\]", text)
-        if arrays:
+        try:
+            rows = json.loads(text[text.index("["):text.rindex("]") + 1])
             break
-        print(f"  AIの回答に番号の一覧が無かったのでやり直します: {text[:80]}")
-    if not arrays:
-        raise ValueError(f"AIの回答から番号の一覧を読めませんでした: {text[:200]}")
-    picked = []
-    for idx in json.loads(arrays[-1]):
-        if 0 <= idx < len(items) and items[idx] not in picked:
-            picked.append(items[idx])
+        except Exception:
+            print(f"  AIの回答を読めなかったのでやり直します: {text[:80]}")
+    if rows is None:
+        raise ValueError(f"AIの回答を読めませんでした: {text[:200]}")
+
+    # 並べ替えと除外はプログラムで確実に行う(10-23 AIに任せると訃報が残る・知名度順にならない・同じ出来事を続けて選んだ)
+    scored = []
+    for row in rows:
+        try:
+            idx, fame, ng = int(row[0]), int(row[1]), int(row[2])
+        except Exception:
+            continue
+        if 0 <= idx < len(items) and not ng:
+            scored.append((fame, idx))
+    scored.sort(key=lambda x: -x[0])   # 知名度の高い順(同じなら AI の並び順)
+    picked, used_names = [], recent_names(recent_posts)
+    for fame, idx in scored:
+        item = items[idx]
+        names = title_names(item["keyword"])
+        if names & used_names:
+            continue   # 直近の投稿や、すでに選んだ記事と同じ人物・出来事
+        picked.append(item)
+        used_names |= names
     return picked
+
+
+# 同じ人物・出来事かどうかを、題名の中の固有名らしい言葉(漢字・カタカナ・英字が4文字以上続くもの)で見分ける
+_COMMON_WORDS = {
+    "ニュース", "アルバム", "シングル", "ツアー", "ライブ", "コンサート", "スポーツ", "日刊スポーツ", "スポーツ報知",
+    "オリコン", "ドラマ", "インタビュー", "オフィシャルレポート", "リリース", "メンバー", "グループ", "デビュー",
+    "YouTube", "TikTok", "Instagram", "ABEMA", "TIMES", "PRIME", "週刊女性PRIME", "Yahoo", "NHKニュース",
+    "公開決定", "開催決定", "発売決定", "初登場", "新曲配信", "日本代表", "代表選手", "記者会見",
+    "レジェンド", "電撃就任", "ギャップ", "サプライズ", "ファン歓喜",
+}
+
+
+def title_names(title: str) -> set:
+    t = re.split(r" - | \| |（|\(", title)[0]
+    words = set(re.findall(r"[一-龯々ァ-ヴー・A-Za-z0-9＆&]{4,}", t))
+    return {w for w in words if w not in _COMMON_WORDS and not w.isdigit()}
+
+
+def recent_names(recent_posts) -> set:
+    names = set()
+    for t in recent_posts or []:
+        # 「題名 (元の記事)」の両方から拾う
+        for part in t.split(" (", 1):
+            names |= title_names(part.rstrip(")"))
+    return names
 
 
 def select_topic_items_by_keywords(items: list[dict], keywords: list[str]) -> list[dict]:
