@@ -215,29 +215,39 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
         + ("- 次は直近2日に投稿した話題。これらと同じアーティスト・グループ、または同じ出来事を扱う記事は、"
            "記事が違っても選ばない(視聴者が同じ話題ばかりと感じないように)\n"
            + "\n".join(f"  ・{t}" for t in recent_posts) + "\n" if recent_posts else "")
-        + "出力は番号のJSON配列だけにすること(例: [3, 0, 12])。当てはまるものが無ければ []。\n\n"
+        + "回答は番号のJSON配列1つだけにすること(例: [3, 0, 12])。説明・理由・見出しは一切書かない。当てはまるものが無ければ []。\n\n"
         f"{listing}"
     )
     client = anthropic.Anthropic()
-    response = client.messages.create(
-        model=model,
-        **claude_extra_params(model),
-        max_tokens=512,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    text = "".join(block.text for block in response.content if block.type == "text")
-    m = re.search(r"\[[\d,\s]*\]", text)
-    if not m:
+    arrays = []
+    for attempt in range(2):   # 説明だけ書いて番号を出さないことがあるので、1回だけやり直す
+        response = client.messages.create(
+            model=model,
+            **claude_extra_params(model),
+            max_tokens=2048,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(block.text for block in response.content if block.type == "text")
+        # 説明が混ざっても、最後に書かれた番号の一覧を使う
+        arrays = re.findall(r"\[[\d,\s]*\]", text)
+        if arrays:
+            break
+        print(f"  AIの回答に番号の一覧が無かったのでやり直します: {text[:80]}")
+    if not arrays:
         raise ValueError(f"AIの回答から番号の一覧を読めませんでした: {text[:200]}")
     picked = []
-    for idx in json.loads(m.group(0)):
+    for idx in json.loads(arrays[-1]):
         if 0 <= idx < len(items) and items[idx] not in picked:
             picked.append(items[idx])
     return picked
 
 
 def select_topic_items_by_keywords(items: list[dict], keywords: list[str]) -> list[dict]:
-    return [item for item in items if any(k in item["keyword"] for k in keywords)]
+    """AIが使えないときの予備。はてな(何の話題もある)の記事は、言葉が合っても音楽以外が混ざるので使わず、
+    音楽ニュースのサイト(topic_extra_rss)の記事だけを使う(10-23「5人グループで座って」などを拾ったため)"""
+    return [item for item in items if item["news_items"][0].get("source") != "はてなブックマーク"
+            and any(k in item["keyword"] for k in keywords)] or \
+           [item for item in items if item["news_items"][0].get("source") != "はてなブックマーク"]
 
 
 def extract_article_text(url: str) -> str:
