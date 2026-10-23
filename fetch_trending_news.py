@@ -216,14 +216,16 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
         f"以下の「記事」一覧から「{topic}」に当てはまるニュース記事だけを選んでください。\n"
         + rules
         + "- 訃報・病気・けが・事故・事件・逮捕など、人の不幸や不祥事が中心の記事は除外\n"
-        "選んだ記事それぞれについて [番号, 知名度, \"主役\"] を出してください。\n"
+        "選んだ記事それぞれについて [番号, 知名度, コメント, \"主役\"] を出してください。\n"
         "- 知名度：その記事の主役が一般の人にどれだけ知られているか。5=ほぼ誰でも知っている(国民的スター・紅白常連・日本代表の顔)、"
         "4=多くの人が知っている(地上波ドラマ主演・CM・人気グループ)、3=若い人や好きな人なら知っている、2=ファンなら知っている、1=ほとんど知られていない\n"
+        "- コメント：TikTok でこの話題を紹介したとき、コメントがどれだけ集まりそうか。5=賛否が分かれる・自分の意見や体験を言いたくなる・"
+        "ファンが熱く語りたくなる・驚きやツッコミどころがある、3=反応はあるが盛り上がりは普通、1=淡々とした告知で言うことがない\n"
         "- 主役：その記事の中心の人物・グループの名前を、正式な名前で短く(例:\"松井秀喜\"、\"Mrs. GREEN APPLE\"、\"YOASOBI\")。"
         "同じ人物・グループなら、どの記事でも必ず同じ書き方にする\n"
-        + ("さらに、下の「直近の投稿」それぞれについても [\"R番号\", 0, \"主役\"] を同じ書き方で出してください(同じ話題を続けないために使います)。\n"
+        + ("さらに、下の「直近の投稿」それぞれについても [\"R番号\", 0, 0, \"主役\"] を同じ書き方で出してください(同じ話題を続けないために使います)。\n"
            if recent_listing else "")
-        + "回答は JSON の配列1つだけにすること(例: [[3, 5, \"松井秀喜\"], [0, 2, \"INI\"], [\"R0\", 0, \"YOASOBI\"]])。説明・理由・見出しは一切書かない。\n\n"
+        + "回答は JSON の配列1つだけにすること(例: [[3, 5, 4, \"松井秀喜\"], [0, 2, 3, \"INI\"], [\"R0\", 0, 0, \"YOASOBI\"]])。説明・理由・見出しは一切書かない。\n\n"
         "【記事】\n" + listing
         + ("\n\n【直近の投稿】\n" + recent_listing if recent_listing else "")
     )
@@ -253,7 +255,9 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
     scored = []
     for row in rows:
         try:
-            key, fame, star = row[0], int(row[1]), norm(row[2])
+            key, star = row[0], norm(row[-1])
+            fame = int(row[1])
+            comment = int(row[2]) if len(row) >= 4 else 3
         except Exception:
             continue
         if isinstance(key, str) and key.startswith("R"):
@@ -264,14 +268,17 @@ def select_topic_items_with_ai(items: list[dict], topic: str, model: str, recent
         except Exception:
             continue
         if 0 <= idx < len(items):
-            scored.append((fame, idx, star))
-    scored.sort(key=lambda x: -x[0])   # 知名度の高い順(同じなら AI の並び順)
+            scored.append((fame, comment, idx, star))
+    # 並べ方(ユーザー希望 10-23): 知名度の高い人(4以上)を先に → その中でコメントが集まりそうな順 → 知名度 → 同点はランダム
+    scored.sort(key=lambda x: (-(x[0] >= 4), -x[1], -x[0], random.random()))
     print(f"  直近の投稿の主役(続けない): {sorted(used)}")
     picked = []
-    for fame, idx, star in scored:
+    for fame, comment, idx, star in scored:
         if star and star in used:
             continue   # 直近に投稿した主役、またはすでに選んだ記事と同じ主役
         picked.append(items[idx])
+        if len(picked) <= 10:
+            print(f"    知名度{fame}・コメント{comment}：{items[idx]['keyword'][:50]}")
         if star:
             used.add(star)
     return picked
