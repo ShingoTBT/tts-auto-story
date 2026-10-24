@@ -1,51 +1,19 @@
 name: check_zernio_ids
 
-# Zernio の一時的な作業用(このブランチへの push でだけ動く)。
-# 2026-10-23 ユーザー依頼: クセツヨ(アカウント5 @kyo5676)の、コメントが付いている一番新しい投稿の
-# コメントすべてに「いいね」と、顔文字1つだけの返信を付ける(自分のコメント・返信済みのコメントには付けない)
+# 一時的な確認用(このブランチへの push でだけ動く)。10-24: 暗号化した効果音を GitHub の Secrets で開けるか
 on:
   push:
     branches: [check-zernio-ids]
 
 jobs:
-  run:
+  check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Like and reply to comments on the latest commented post of account5
+      - uses: actions/checkout@v4
+      - name: Decrypt sfx (no output of contents)
         env:
-          K: ${{ secrets.ZERNIO_API_KEY_ACCOUNT5 }}
-          A: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_3 }}
+          SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
         run: |
-          python3 - <<'PY'
-          import json, os, urllib.request, urllib.parse
-          K, A = os.environ["K"], os.environ["A"]
-          FACE = "(*´▽`*)"
-          def call(method, path, body=None, q=None, key=None):
-              url = "https://zernio.com/api/v1/" + path + ("?" + urllib.parse.urlencode(q) if q else "")
-              h = {"Authorization": f"Bearer {K}", "Content-Type": "application/json"}
-              if key:
-                  h["Idempotency-Key"] = key
-              req = urllib.request.Request(url, method=method, headers=h, data=json.dumps(body).encode() if body is not None else None)
-              try:
-                  return json.load(urllib.request.urlopen(req, timeout=60))
-              except urllib.error.HTTPError as e:
-                  return {"error": e.code, "body": e.read().decode()[:300]}
-          posts = call("GET", "analytics", q={"platform": "tiktok", "accountId": A, "limit": 50}).get("posts", [])
-          posts.sort(key=lambda p: p.get("publishedAt") or "", reverse=True)
-          target = next(p for p in posts if (p.get("analytics") or {}).get("comments"))
-          pid = next(pl.get("platformPostId") for pl in target.get("platforms", []) if pl.get("platformPostId"))
-          print("対象の投稿:", (target.get("publishedAt") or "")[:16], repr((target.get("content") or "")[:40]), pid)
-          comments = call("GET", f"inbox/comments/{pid}", q={"accountId": A, "limit": 100}).get("comments", [])
-          print("コメント数:", len(comments))
-          for c in comments:
-              if (c.get("from") or {}).get("isOwner"):
-                  print("  自分のコメントなので飛ばす:", c["id"]); continue
-              print(f"  コメント {c['id']}: {c.get('message','')[:40]!r}")
-              like = call("POST", f"inbox/comments/{pid}/{c['id']}/like", {"accountId": A})
-              print("    いいね:", json.dumps(like, ensure_ascii=False)[:200])
-              if any((r.get("from") or {}).get("isOwner") for r in c.get("replies") or []):
-                  print("    すでに返信済みなので返信しない"); continue
-              rep = call("POST", f"inbox/comments/{pid}", {"accountId": A, "message": FACE, "commentId": c["id"]}, key=f"face-{c['id']}")
-              print("    返信:", json.dumps(rep, ensure_ascii=False)[:200])
-          PY
+          SFX_PASS="$(printf '%s' "$SFX_BASE_URL" | tr -d '\r\n' | sed 's/^[ \t]*//;s/[ \t]*$//')" \
+            openssl enc -d -aes-256-cbc -pbkdf2 -in assets/sfx.tar.enc -pass env:SFX_PASS | tar -tvf - && echo "DECRYPT_OK"
