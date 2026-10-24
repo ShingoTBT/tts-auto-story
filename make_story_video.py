@@ -490,6 +490,22 @@ def load_sfx(name, gain_db, work):
     公開リポジトリには置けないので、GitHub では SFX_BASE_URL(非公開の場所)から読み込む"""
     src = next((d / name for d in SFX_DIRS if (d / name).exists()), None)
     base = os.environ.get("SFX_BASE_URL", "").strip()
+    # 10-24〜 本命: リポジトリの暗号化した効果音(assets/sfx.tar.enc)を、Secrets の SFX_BASE_URL を合言葉にして開く
+    # (GitHub から Xserver への取得が時間切れになることが続いたため。暗号化しているので公開にはならない)
+    enc = Path("assets/sfx.tar.enc")
+    unpacked = work / "sfx_src"
+    if not src and base and enc.exists():
+        if not (unpacked / name).exists():
+            unpacked.mkdir(parents=True, exist_ok=True)
+            try:
+                env = dict(os.environ, SFX_PASS=base)
+                dec = subprocess.run(["openssl", "enc", "-d", "-aes-256-cbc", "-pbkdf2", "-in", str(enc), "-pass", "env:SFX_PASS"],
+                                     capture_output=True, env=env, check=True)
+                subprocess.run(["tar", "-xf", "-", "-C", str(unpacked)], input=dec.stdout, check=True)
+            except Exception as e:
+                print(f"  暗号化した効果音を開けませんでした: {e}")
+        if (unpacked / name).exists():
+            src = unpacked / name
     if not src and base:
         dl = work / "sfx_src" / name
         dl.parent.mkdir(parents=True, exist_ok=True)

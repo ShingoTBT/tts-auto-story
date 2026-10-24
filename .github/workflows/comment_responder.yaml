@@ -20,7 +20,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 10-24 待たされた回でも最新の記録(posted_videos.jsonl など)を読むよう、起動時点ではなく今の main を取る
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       # 二重に動かないよう、直近40分以内に動いていれば何もしない
       - name: Skip if ran within 40 minutes
