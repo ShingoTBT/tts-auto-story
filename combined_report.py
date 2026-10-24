@@ -9,6 +9,7 @@ TikTokアカウントのフォロワー数レポートと、Threadsアカウン�
 
 import sys
 import os
+import json
 import datetime
 from pathlib import Path
 
@@ -72,13 +73,104 @@ def build_follower_report(tiktok_configs: list[str], timestamp_str: str) -> str:
             print(f"エラー({label}): {e}")
             lines.append(f"・{label}：取得エラー")
 
+    voice_lines = build_voice_lines(tiktok_configs)
     return (
         "＝＝＝＝＝フォロワーレポートです＝＝＝＝＝\n"
         f"{timestamp_str}現在\n"
         "■TikTokの総フォロワー数\n"
         + "\n".join(lines) + "\n"
-        "＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+        + ("\n".join(voice_lines) + "\n" if voice_lines else "")
+        + "＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
     )
+
+
+def build_post_count_lines(tiktok_configs: list[str], threads_configs: list[str]) -> tuple[list[str], bool]:
+    """昨日(日本時間)に実際に投稿できた本数と予定の本数。予定より少なければ ⚠️ を付けて、TO を付ける合図を返す。
+    2026-10-24〜(10-23 に動画投稿が丸1日止まっていたのに気づくのが遅れたため。ユーザー了承)"""
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    yesterday = datetime.datetime.now(jst).date() - datetime.timedelta(days=1)
+    lines, short = [], False
+    for kind, paths in (("tiktok", tiktok_configs), ("threads", threads_configs)):
+        for config_path in paths:
+            config = load_account_config(config_path)
+            label = config.get("chatwork_label", config.get("display_name", config["account_name"]))
+            if kind == "tiktok":
+                if "video" not in config:
+                    continue
+                log = Path(config["output_dir"]) / "posted_videos.jsonl"
+                planned = config.get("planned_per_day") or len(config.get("schedule_jst") or []) or None
+            else:
+                log = Path(config["output_dir"]) / "posted_threads.jsonl"
+                planned = config.get("planned_per_day") or 24   # Threads は毎時
+            done = 0
+            if log.exists():
+                for raw in log.read_text(encoding="utf-8").splitlines():
+                    try:
+                        at = datetime.datetime.fromisoformat(json.loads(raw)["posted_at"])
+                    except Exception:
+                        continue
+                    if at.tzinfo is None:   # Threads の記録は日本時間の印が無い UTC(GitHub の時計)
+                        at = at.replace(tzinfo=datetime.timezone.utc)
+                    if at.astimezone(jst).date() == yesterday:
+                        done += 1
+            mark = ""
+            # TikTok は1本でも足りなければ、Threads(毎時)はたまの1〜2本の抜けでは鳴らさない(85%未満で)
+            if planned and (done < planned if kind == "tiktok" else done < planned * 0.85):
+                mark = " ⚠️予定より少ない"
+                short = True
+            lines.append(f"・{label}：{done}本／予定{planned or '?'}本{mark}")
+    if not lines:
+        return [], False
+    return [f"■昨日{yesterday.month}/{yesterday.day}の投稿本数（実際に投稿できた本数／予定）"] + lines, short
+
+
+def build_voice_lines(tiktok_configs: list[str]) -> list[str]:
+    """動画で投稿しているアカウントの、昨日(日本時間)の投稿に使った声(ElevenLabs か VOICEVOX)の本数と、
+    ElevenLabs の残り文字数(最後の投稿のときの値)。2026-10-23〜"""
+    yesterday = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).date() - datetime.timedelta(days=1)
+    lines = []
+    latest = None  # (posted_at, remaining)
+    for config_path in tiktok_configs:
+        config = load_account_config(config_path)
+        if "video" not in config:
+            continue
+        label = config.get("chatwork_label", config.get("display_name", config["account_name"]))
+        counts = {}
+        log = Path(config["output_dir"]) / "posted_videos.jsonl"
+        if log.exists():
+            for raw in log.read_text(encoding="utf-8").splitlines():
+                try:
+                    rec = json.loads(raw)
+                except ValueError:
+                    continue
+                at = rec.get("posted_at", "")
+                if rec.get("elevenlabs_remaining") is not None and (latest is None or at > latest[0]):
+                    latest = (at, rec["elevenlabs_remaining"])
+                if at[:10] == yesterday.isoformat():
+                    eng = rec.get("voice_engine") or "不明"
+                    counts[eng] = counts.get(eng, 0) + 1
+        detail = "・".join(f"{k} {v}本" for k, v in sorted(counts.items())) or "投稿なし"
+        lines.append(f"・{label}：{detail}")
+    if not lines:
+        return []
+    out = [f"■動画の声（昨日{yesterday.month}/{yesterday.day}の投稿）"] + lines
+    # Google(Chirp 3 HD)の今月の使用量。無料枠100万字の30%で警告、60%で自動停止(make_story_video.py)
+    month = (datetime.datetime.utcnow() + datetime.timedelta(hours=9)).strftime("%Y-%m")
+    g_used = 0
+    for f in Path("outputs").glob("*/google_tts_usage.jsonl"):
+        for raw in f.read_text(encoding="utf-8").splitlines():
+            try:
+                rec = json.loads(raw)
+            except ValueError:
+                continue
+            if rec.get("month") == month:
+                g_used += int(rec.get("chars", 0))
+    ratio = g_used / 1_000_000
+    warn = "[To:237628] ⚠️多めです（60%で自動停止→VOICEVOX）" if ratio >= 0.30 else "無料枠の中"
+    out.append(f"・Google の読み上げ：今月 {g_used:,}字／無料枠 1,000,000字（{ratio:.1%}・{warn}）")
+    if latest:
+        out.append(f"・ElevenLabs の残り：{latest[1]:,}字")
+    return out
 
 
 def build_comment_report(threads_configs: list[str], timestamp_str: str) -> str:
@@ -157,6 +249,15 @@ def main():
     timestamp_str, _ = now_jst_str()
 
     follower_report = build_follower_report(tiktok_configs, timestamp_str)
+    # 昨日の投稿本数(予定より少なければ TO 付き)をフォロワーレポートの頭に入れる
+    try:
+        count_lines, short = build_post_count_lines(tiktok_configs, threads_configs)
+        if count_lines:
+            head, rest = follower_report.split("\n", 2)[:2], follower_report.split("\n", 2)[2]
+            warn = ["[To:237628] ⚠️ 予定より投稿が少ないアカウントがあります（止まっていないか確認が必要です）"] if short else []
+            follower_report = "\n".join(head + warn + count_lines + [rest])
+    except Exception as e:
+        print(f"エラー(投稿本数): {e}")
     print(follower_report)
     send_chatwork_message(cw_token, cw_room, follower_report)
 

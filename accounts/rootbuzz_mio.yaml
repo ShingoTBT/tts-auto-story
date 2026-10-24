@@ -1,6 +1,6 @@
 # 依頼「ルートバズ」の TikTok 転職アカウント。元は「転職あるある_アカウント1」(@user2804137174301)。
 # 2026-10-22 にルートバズへ流用し、TikTok for Business でつなぎ直した(表示名・IDも変更)。
-# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)だけに使う。
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
 account_name: "rootbuzz_mio"
 display_name: "みお｜転職3回したOL"
 chatwork_label: "みお｜転職3回したOL"

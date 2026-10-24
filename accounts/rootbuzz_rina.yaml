@@ -1,0 +1,8 @@
+# 依頼「ルートバズ」の TikTok アカウント「りな｜マチアプで婚約した30歳」(マッチングアプリ・女性の婚活向け。2026-10-23 新規作成)
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
+account_name: "rootbuzz_rina"
+display_name: "りな｜マチアプで婚約した30歳"
+chatwork_label: "りな｜マチアプで婚約した30歳"
+tiktok_url: "https://tiktok.com/@rina_machiapu"
+zernio_api_key_env: "ZERNIO_API_KEY_ROOTBUZZ"  # Zernio の4つ目(zernio4。ケイと同じ)
+zernio_account_id: "6adb3758d7ed1186922f6d6d"

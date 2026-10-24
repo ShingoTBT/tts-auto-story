@@ -67,6 +67,6 @@ jobs:
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: >
           python combined_report.py
-          --tiktok accounts/account2_news.yaml accounts/account5_tiktok_engagement.yaml accounts/account6_tiktok_engagement.yaml
+          --tiktok accounts/account2_news.yaml accounts/account5_tiktok_engagement.yaml accounts/account6_emotional.yaml
           --threads accounts/account3_threads.yaml accounts/account4_threads_engagement.yaml
-          --rootbuzz accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml
+          --rootbuzz accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml

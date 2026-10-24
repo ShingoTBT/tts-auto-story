@@ -25,6 +25,7 @@ from generate import (
     validate_output_format,
     extract_title,
     strip_meta_commentary,
+    use_queued_post,
 )
 
 
@@ -152,6 +153,8 @@ def _run():
         sys.exit(1)
 
     config = load_account_config(sys.argv[1])
+    if use_queued_post(config):
+        return
     candidate = load_trend_candidate(config["output_dir"])
 
     system_prompt = load_system_prompt(config["prompt_file"])

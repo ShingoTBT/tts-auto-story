@@ -1,5 +1,5 @@
 # 依頼「ルートバズ」の TikTok アカウント。投稿はルートバズのチャット(恋愛アカウント/tools/send_post.py)が行う。
-# ここでは毎朝のレポート(combined_report.py --rootbuzz)だけに使う。
+# ここでは毎朝のレポート(combined_report.py --rootbuzz)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
 account_name: "rootbuzz_kei"
 display_name: "ケイ｜アラサー男の本音"
 chatwork_label: "ケイ｜アラサー男の本音"
