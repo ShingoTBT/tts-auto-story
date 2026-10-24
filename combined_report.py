@@ -84,6 +84,46 @@ def build_follower_report(tiktok_configs: list[str], timestamp_str: str) -> str:
     )
 
 
+def build_post_count_lines(tiktok_configs: list[str], threads_configs: list[str]) -> tuple[list[str], bool]:
+    """昨日(日本時間)に実際に投稿できた本数と予定の本数。予定より少なければ ⚠️ を付けて、TO を付ける合図を返す。
+    2026-10-24〜(10-23 に動画投稿が丸1日止まっていたのに気づくのが遅れたため。ユーザー了承)"""
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    yesterday = datetime.datetime.now(jst).date() - datetime.timedelta(days=1)
+    lines, short = [], False
+    for kind, paths in (("tiktok", tiktok_configs), ("threads", threads_configs)):
+        for config_path in paths:
+            config = load_account_config(config_path)
+            label = config.get("chatwork_label", config.get("display_name", config["account_name"]))
+            if kind == "tiktok":
+                if "video" not in config:
+                    continue
+                log = Path(config["output_dir"]) / "posted_videos.jsonl"
+                planned = config.get("planned_per_day") or len(config.get("schedule_jst") or []) or None
+            else:
+                log = Path(config["output_dir"]) / "posted_threads.jsonl"
+                planned = config.get("planned_per_day") or 24   # Threads は毎時
+            done = 0
+            if log.exists():
+                for raw in log.read_text(encoding="utf-8").splitlines():
+                    try:
+                        at = datetime.datetime.fromisoformat(json.loads(raw)["posted_at"])
+                    except Exception:
+                        continue
+                    if at.tzinfo is None:   # Threads の記録は日本時間の印が無い UTC(GitHub の時計)
+                        at = at.replace(tzinfo=datetime.timezone.utc)
+                    if at.astimezone(jst).date() == yesterday:
+                        done += 1
+            mark = ""
+            # TikTok は1本でも足りなければ、Threads(毎時)はたまの1〜2本の抜けでは鳴らさない(85%未満で)
+            if planned and (done < planned if kind == "tiktok" else done < planned * 0.85):
+                mark = " ⚠️予定より少ない"
+                short = True
+            lines.append(f"・{label}：{done}本／予定{planned or '?'}本{mark}")
+    if not lines:
+        return [], False
+    return [f"■昨日{yesterday.month}/{yesterday.day}の投稿本数（実際に投稿できた本数／予定）"] + lines, short
+
+
 def build_voice_lines(tiktok_configs: list[str]) -> list[str]:
     """動画で投稿しているアカウントの、昨日(日本時間)の投稿に使った声(ElevenLabs か VOICEVOX)の本数と、
     ElevenLabs の残り文字数(最後の投稿のときの値)。2026-10-23〜"""
@@ -209,6 +249,15 @@ def main():
     timestamp_str, _ = now_jst_str()
 
     follower_report = build_follower_report(tiktok_configs, timestamp_str)
+    # 昨日の投稿本数(予定より少なければ TO 付き)をフォロワーレポートの頭に入れる
+    try:
+        count_lines, short = build_post_count_lines(tiktok_configs, threads_configs)
+        if count_lines:
+            head, rest = follower_report.split("\n", 2)[:2], follower_report.split("\n", 2)[2]
+            warn = ["[To:237628] ⚠️ 予定より投稿が少ないアカウントがあります（止まっていないか確認が必要です）"] if short else []
+            follower_report = "\n".join(head + warn + count_lines + [rest])
+    except Exception as e:
+        print(f"エラー(投稿本数): {e}")
     print(follower_report)
     send_chatwork_message(cw_token, cw_room, follower_report)
 
