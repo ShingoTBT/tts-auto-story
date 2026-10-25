@@ -408,7 +408,7 @@ def main():
         print(f"ジャンル指定: {topic}")
         all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
-        # 10-25〜 直近3本にバズった投稿があれば、同じネタを別の切り口で(buzz_followup.py)
+        # 10-25〜 2日前までの投稿にバズったものがあれば、同じネタを別の切り口で(buzz_followup.py)
         if config.get("buzz_followup"):
             try:
                 from buzz_followup import find_buzz, pick_buzz_candidate

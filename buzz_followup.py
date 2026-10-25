@@ -1,5 +1,5 @@
 """
-ニュース(アカウント2): 直近3本の中にバズった投稿があれば、次の1本は同じネタを別の切り口で作る(2026-10-25〜 ユーザー希望)
+ニュース(アカウント2): 2日前までの投稿の中にバズったものがあれば、次の1本は同じネタを別の切り口で作る(2026-10-25〜 ユーザー希望)
 
 - バズ = 投稿から3時間以上たっていて、再生数が「ここ2週間のニュース動画の再生数の中央値の2倍以上」かつ「500回以上」
 - 同じネタの新しい記事があればそれを使い、無ければバズった投稿と同じ記事(または投稿の本文)を、切り口を変えて使う
@@ -21,7 +21,7 @@ ZERNIO_API_BASE = "https://zernio.com/api/v1"
 BUZZ_MIN_VIEWS = 500
 BUZZ_RATIO = 2.0
 MIN_AGE_HOURS = 3
-LOOK_BACK_POSTS = 3
+LOOK_BACK_HOURS = 48   # 10-26 直近3本 → 2日前まで(ユーザー希望。3本だと半日で外れて、バズを拾えなかった)
 MAX_FOLLOWUPS = 2
 MEDIAN_DAYS = 14
 CANDIDATE_LOG = "news_candidates.jsonl"
@@ -75,7 +75,7 @@ def _tiktok_posts(config: dict) -> list[dict]:
 
 
 def find_buzz(config: dict):
-    """直近3本の中でバズった投稿を探す。無ければ None"""
+    """2日前までの投稿の中でバズったものを探す。無ければ None"""
     out = Path(config["output_dir"])
     posted = _read_jsonl(out / "posted_videos.jsonl")
     if not posted:
@@ -92,30 +92,38 @@ def find_buzz(config: dict):
     line = max(BUZZ_MIN_VIEWS, median * BUZZ_RATIO)
     print(f"バズの確認: ここ2週間の再生数の中央値 {median:.0f}回 → {line:.0f}回以上をバズとみなす")
 
-    best = None
-    for rec in posted[-LOOK_BACK_POSTS:]:
+    buzzed = []
+    since = now - datetime.timedelta(hours=LOOK_BACK_HOURS)
+
+    def posted_at(rec):
+        try:
+            return datetime.datetime.fromisoformat(rec.get("posted_at") or "")
+        except ValueError:
+            return None
+
+    for rec in [r for r in posted if posted_at(r) and posted_at(r) >= since]:
         title = (rec.get("title") or "").strip()
         match = next((p for p in aged if title and p["content"].startswith(title)), None)
         if not match:
             continue
         print(f"  {title}: {match['views']}回")
-        if match["views"] >= line and (best is None or match["views"] > best[1]):
-            best = (rec, match["views"])
-    if not best:
-        return None
+        if match["views"] >= line:
+            buzzed.append((rec, match["views"]))
 
-    rec, views = best
-    source = (rec.get("source") or "").replace("\\", "/")
+    # 再生数の多い順に。同じネタをもう2回作ったものは飛ばして、次にバズったものを使う
     log = _read_jsonl(out / CANDIDATE_LOG)
-    entry = next((r for r in reversed(log) if r.get("source") == source), {})
-    root = entry.get("buzz_root") or source
-    done = sum(1 for r in log if r.get("buzz_root") == root)
-    if done >= MAX_FOLLOWUPS:
-        print(f"  「{rec.get('title')}」はバズっていますが、同じネタはもう{done}回作ったので今回は普通に選びます")
-        return None
-    text = Path(source).read_text(encoding="utf-8") if source and Path(source).exists() else ""
-    print(f"  バズった投稿: {rec.get('title')}({views}回)→ 同じネタを別の切り口で作ります({done + 1}回目)")
-    return {"title": rec.get("title") or "", "views": views, "root": root, "post_text": text, "entry": entry}
+    for rec, views in sorted(buzzed, key=lambda x: -x[1]):
+        source = (rec.get("source") or "").replace("\\", "/")
+        entry = next((r for r in reversed(log) if r.get("source") == source), {})
+        root = entry.get("buzz_root") or source
+        done = sum(1 for r in log if r.get("buzz_root") == root)
+        if done >= MAX_FOLLOWUPS:
+            print(f"  「{rec.get('title')}」はバズっていますが、同じネタはもう{done}回作ったので飛ばします")
+            continue
+        text = Path(source).read_text(encoding="utf-8") if source and Path(source).exists() else ""
+        print(f"  バズった投稿: {rec.get('title')}({views}回)→ 同じネタを別の切り口で作ります({done + 1}回目)")
+        return {"title": rec.get("title") or "", "views": views, "root": root, "post_text": text, "entry": entry}
+    return None
 
 
 def _pick_same_topic(items: list[dict], buzz: dict):

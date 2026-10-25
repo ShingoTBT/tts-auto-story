@@ -48,7 +48,7 @@ schedule_jst:
 image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
 model: "claude-sonnet-4-6"
 recent_titles_count: 30
-buzz_followup: true   # 10-25〜 直近3本にバズった投稿があれば、同じネタを別の切り口で(buzz_followup.py)
+buzz_followup: true   # 10-25〜 2日前までの投稿にバズったものがあれば、同じネタを別の切り口で(buzz_followup.py)
 zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"  # TikTok連携後にSecrets登録
 
 monitor_platform: "tiktok"  # 監視用: tiktok または threads
