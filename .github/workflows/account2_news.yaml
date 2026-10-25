@@ -109,6 +109,8 @@ jobs:
           GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
+          # 内容に合わせた効果音を AI が選ぶ用(10-25〜)
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           # Google の無料枠の見張り(30%で TO 付き警告・60%で自動停止)の知らせ用
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}

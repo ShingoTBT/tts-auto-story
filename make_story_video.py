@@ -17,6 +17,7 @@ APIキー: 環境変数 ELEVENLABS_API_KEY、無ければ %USERPROFILE%\\.secret
 import argparse
 import difflib
 import hashlib
+import json
 import math
 import os
 import random
@@ -477,10 +478,81 @@ THEMES = {
 # CapCut の効果音(依頼「ルートバズ」で取り込んだもの)。元の名前は Dropbox の 効果音/出典.txt
 SFX = {
     "story": dict(start=("glocken.mp3", -16), page=("sparkle.mp3", -22), line=None, last=None),
-    "news": dict(start=("impact.mp3", -10), page=("swipe.mp3", -12), line=("pop.mp3", -18), last=("sparkle.mp3", -14)),
-    "talk": dict(start=("tsuzumi.mp3", -8), page=("swipe.mp3", -12), line=("pop.mp3", -15),   # 10-25 ぽよっを気持ち大きく(-18→-15)
+    "news": dict(start=("impact.mp3", -10), page=("swipe.mp3", -12), line=("pop.mp3", -13), last=("sparkle.mp3", -14)),   # 10-25 pop を -18→-15→-13(ユーザー「もう少しだけ大きく」)
+    "talk": dict(start=("tsuzumi.mp3", -8), page=("swipe.mp3", -12), line=("pop.mp3", -13),   # 10-25 ぽよっを気持ち大きく(-18→-15→-13)
               last=("notify.mp3", -12)),
 }
+# 内容に合わせて「たまに」鳴らす音(10-25〜 ユーザー希望。内容に合うことが大事・涙あふれるは雰囲気を壊さない柔らかい音だけ)
+# 名前: (ファイル, 音量dB, どんな文に合うか)。動画を作るときに AI が台本を読んで、合う文があれば選ぶ(無ければ鳴らさない)
+# 10-25 ユーザー「もう少しだけ大きく」で全部 +2dB(涙あふれるの柔らかい音はそのまま)
+_POP_ACCENTS = {
+    "キラリン": ("kira.mp3", -8, "良い知らせ・快挙・おめでたいこと・ひらめき"),
+    "ドドン": ("dodon.mp3", -10, "驚きの事実・大きな発表・すごい記録や数字"),
+    "シャキン": ("shakin.mp3", -8, "きっぱり言い切る・決意・決めの一言"),
+    "シャン": ("shan.mp3", -6, "華やかな場面・空気が変わる瞬間"),
+    "ジャジャーン": ("jajan.mp3", -10, "新しいものの紹介・登場・発表"),
+    "ピカーン": ("hirameki.mp3", -10, "ひらめき・なるほどと思う理由や答え"),
+    "ピンポン": ("pinpon.mp3", -12, "その通り・正解・納得できる結論"),
+    "ビックリ": ("bikkuri.mp3", -10, "意外な事実・思わず「えっ」と驚くこと"),
+}
+# クセツヨ(共感/議論系)だけ: 困った・呆れた話に合う、ちょっと笑える音
+_TALK_ACCENTS = dict(_POP_ACCENTS, **{
+    "ガーン": ("gan.mp3", -12, "ショックな出来事・がっかりした瞬間"),
+    "チーン": ("chin.mp3", -10, "残念な結末・言葉を失う場面"),
+    "えっ？": ("e.mp3", -10, "相手の耳を疑う発言・ありえない言動"),
+    "ブブー": ("bubu.mp3", -12, "それはダメ・常識外れの行動"),
+    "ほわんほわん": ("howan.mp3", -12, "想像・妄想・ふわっとした話"),
+})
+ACCENTS = {
+    "news": dict(sounds=_POP_ACCENTS, most=2),
+    "talk": dict(sounds=_TALK_ACCENTS, most=2),
+    "story": dict(sounds={
+        "キラッ": ("kira.mp3", -18, "小さな気づき・ふっと心が明るくなる瞬間"),
+        "ハープ": ("harp.mp3", -18, "温かい思い出・やさしさが伝わる場面"),
+        "しゃらーん": ("shara.mp3", -20, "想いがあふれる・心がほどける場面"),
+        "透明なきらめき": ("toumei.mp3", -20, "静かな感動・光が差すような場面"),
+        "チリン": ("chirin.mp3", -20, "ふと思い出す・時が止まるような一瞬"),
+        "ウインドチャイム": ("chime.mp3", -22, "季節や時間が流れる・回想に入る場面"),
+    }, most=1),
+}
+ACCENT_MODEL = "claude-sonnet-4-6"
+
+
+def choose_accents(theme, sentences, work):
+    """台本の文(番号, 文)から、内容に合う文にだけ効果音を選ぶ。{番号: 音の名前}。合う文が無い・AI が使えないときは {}"""
+    plan = ACCENTS.get(theme)
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not plan or not key or not sentences:
+        return {}
+    sounds = plan["sounds"]
+    tag = hashlib.md5(json.dumps([theme, sentences], ensure_ascii=False).encode()).hexdigest()[:12]
+    cache = work / f"accents_{tag}.json"
+    if cache.exists():
+        return {int(k): v for k, v in json.loads(cache.read_text(encoding="utf-8")).items()}
+    menu = "\n".join(f"- {n}：{d}" for n, (_, _, d) in sounds.items())
+    lines = "\n".join(f"{i}. {t}" for i, t in sentences)
+    mood = "静かで感動的な話なので、雰囲気を壊さないことが最優先。少しでも合わないと思ったら選ばない。" if theme == "story" else ""
+    prompt = (f"縦型のショート動画のナレーションの文です。効果音を、内容にぴったり合う文にだけ付けます。{mood}\n"
+              f"使える効果音：\n{menu}\n\n文：\n{lines}\n\n"
+              f"内容にはっきり合う文があれば、最大{plan['most']}か所まで選んでください。無理に選ばず、合う文が無ければ空にしてください。"
+              '返事は JSON だけ：{"文の番号": "効果音の名前"}（例：{"3": "ドドン"}、無ければ {}）')
+    try:
+        import anthropic
+        r = anthropic.Anthropic(api_key=key).messages.create(
+            model=ACCENT_MODEL, max_tokens=200, messages=[{"role": "user", "content": prompt}])
+        text = "".join(b.text for b in r.content if getattr(b, "type", "") == "text")
+        found = re.findall(r"\{[^{}]*\}", text)
+        raw = json.loads(found[-1]) if found else {}
+        ok = {i for i, _ in sentences}
+        picked = {int(k): v for k, v in raw.items() if str(k).isdigit() and int(k) in ok and v in sounds}
+        picked = dict(sorted(picked.items())[:plan["most"]])
+    except Exception as e:
+        print(f"  効果音を選べませんでした(この動画は付けません): {e}")
+        return {}
+    cache.write_text(json.dumps(picked, ensure_ascii=False), encoding="utf-8")
+    return picked
+
+
 SFX_DIRS = [
     Path(os.environ.get("SFX_DIR", "") or "."),
     Path(r"D:/Dropbox/株式会社アリウープ Dropbox/tsubata shingo/【クラウド使用】ソフトウェアデータフォルダ/Claude/AIを使った自動収益化の仕組み/効果音"),
@@ -727,11 +799,23 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
     if sfx:
         plan = SFX[theme]
         events = [(0.0, plan["start"])]
+        # 内容に合わせた効果音の候補: ページの最初と最後の文は別の音が鳴るので除く
+        cand = [(k, pages[pi][si]) for k, (pi, si, _, _) in enumerate(pieces)
+                if si > 0 and not (pi == len(pages) - 1 and si == len(pages[pi]) - 1)]
+        accents = choose_accents(theme, cand, work)
+        sounds = ACCENTS.get(theme, {}).get("sounds", {})
+        for k, name in accents.items():
+            line = pages[pieces[k][0]][pieces[k][1]]
+            log.append(f"[効果音] {name}: {line}")
+            print(f"  内容に合わせた効果音: {name} → {line}")
         for k, (pi, si, st, _) in enumerate(pieces):
             if pi == len(pages) - 1 and si == len(pages[pi]) - 1 and plan["last"]:
                 events.append((st - 0.15, plan["last"]))
             elif si == 0 and pi > 0 and plan["page"]:
                 events.append((st - 0.35, plan["page"]))
+            elif k in accents:   # 合う文には、いつもの音の代わりに内容に合わせた音
+                f, db, _ = sounds[accents[k]]
+                events.append((st - 0.12, (f, db)))
             elif plan["line"]:
                 events.append((st - 0.15, plan["line"]))
         for at, item in events:
