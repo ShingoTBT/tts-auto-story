@@ -50,6 +50,14 @@ def build_user_message(candidate: dict, recent_titles: list[str]) -> str:
         f"【元記事本文】\n{candidate['article_text']}"
     )
 
+    if candidate.get("angle_note"):
+        # 10-25〜 バズったネタを別の切り口で(buzz_followup.py)。同じ話題なのはわざとなので、タイトルだけ重ねない
+        base += "\n\n" + candidate["angle_note"]
+        if recent_titles:
+            titles_block = "\n".join(f"- {t}" for t in recent_titles)
+            base += f"\n\n以下は直近に使用済みのタイトル一覧です。これらと同じタイトルにしないでください。\n{titles_block}"
+        return base
+
     if recent_titles:
         titles_block = "\n".join(f"- {t}" for t in recent_titles)
         base += (
@@ -214,6 +222,11 @@ def _run():
 
     title = extract_title(output_text)
     append_title_log(config["titles_log_file"], f"{title} ({candidate['keyword']})")
+    try:   # 元ネタの記事を残す(次にバズったとき、同じ記事を別の切り口で使うため)
+        from buzz_followup import log_candidate
+        log_candidate(config["output_dir"], output_path, candidate)
+    except Exception as e:
+        print(f"元ネタの記録に失敗: {e}")
 
     print(f"生成完了: {output_path}")
     print(f"タイトル: {title}")

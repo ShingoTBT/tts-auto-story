@@ -91,6 +91,9 @@ jobs:
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # バズった投稿の確認用(再生数)
+          ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
+          ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
         run: python fetch_trending_news.py accounts/account2_news.yaml
 
       - name: Generate news story

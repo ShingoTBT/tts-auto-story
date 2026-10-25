@@ -391,6 +391,21 @@ def main():
         print(f"ジャンル指定: {topic}")
         all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
+        # 10-25〜 直近3本にバズった投稿があれば、同じネタを別の切り口で(buzz_followup.py)
+        if config.get("buzz_followup"):
+            try:
+                from buzz_followup import find_buzz, pick_buzz_candidate
+                buzz = find_buzz(config)
+                if buzz:
+                    result = pick_buzz_candidate(all_items, buzz, extract_article_text, MIN_ARTICLE_CHARS)
+                    output_dir = Path(config["output_dir"])
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    with open(output_dir / "trend_candidate.json", "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+                    print(f"採用(バズったネタ): {result['keyword']}")
+                    return
+            except Exception as e:
+                print(f"  バズの確認ができませんでした(いつもどおり選びます): {e}")
         try:
             recent_posts = load_recent_post_titles(config["titles_log_file"], hours=48)
             print(f"直近2日の投稿({len(recent_posts)}件)と同じ話題は避けます")
