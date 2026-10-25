@@ -49,7 +49,10 @@ def make_teaser(source_text: str, theme: str) -> str:
     except Exception as e:
         print(f"  説明欄のつかみを作れませんでした(つかみ無しで投稿します): {e}")
         return ""
-    text = text.strip().strip("「」\"").strip()
+    text = text.strip()
+    # 全体が「」や "" で囲まれているときだけ外す(文中の「」は残す。10-26 見本で先頭の「が消えたため)
+    if len(text) > 2 and text[0] + text[-1] in ("「」", '""'):
+        text = text[1:-1].strip()
     text = "\n".join(l.strip() for l in text.split("\n") if l.strip() and not l.strip().startswith("#"))
     if not text or len(text) > MAX_CHARS + 20:
         print(f"  つかみが長すぎる・空なので使いません: {text!r}")
