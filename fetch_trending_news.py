@@ -379,7 +379,9 @@ def main():
     if next_topic.exists():
         from buzz_followup import angle_note
         want = json.loads(next_topic.read_text(encoding="utf-8"))
-        post_text = Path(want["source"]).read_text(encoding="utf-8") if Path(want["source"]).exists() else ""
+        # 前に同じネタで作った投稿が複数あるときは、全部を「前回の投稿」として渡す(どれとも違う切り口にするため)
+        sources = [want["source"]] + want.get("also_sources", [])
+        post_text = "\n\n----------\n\n".join(Path(s).read_text(encoding="utf-8") for s in sources if Path(s).exists())
         result = {"keyword": want["keyword"], "article_url": want.get("article_url", ""), "article_source": "",
                   "article_text": want.get("article_text") or post_text, "buzz_root": want["source"],
                   "angle_note": angle_note({"title": want["title"], "post_text": post_text})}
