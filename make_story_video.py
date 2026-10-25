@@ -478,7 +478,8 @@ THEMES = {
 SFX = {
     "story": dict(start=("glocken.mp3", -16), page=("sparkle.mp3", -22), line=None, last=None),
     "news": dict(start=("impact.mp3", -10), page=("swipe.mp3", -12), line=("pop.mp3", -18), last=("sparkle.mp3", -14)),
-    "talk": dict(start=("tsuzumi.mp3", -8), page=("swipe.mp3", -12), line=("pop.mp3", -18), last=("notify.mp3", -12)),
+    "talk": dict(start=("tsuzumi.mp3", -8), page=("swipe.mp3", -12), line=("pop.mp3", -15),   # 10-25 ぽよっを気持ち大きく(-18→-15)
+              last=("notify.mp3", -12)),
 }
 SFX_DIRS = [
     Path(os.environ.get("SFX_DIR", "") or "."),
