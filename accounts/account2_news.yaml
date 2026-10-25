@@ -31,6 +31,7 @@ video:
   google_voice: "Puck"                       # ja-JP-Chirp3-HD-Puck(男性・明るい)
   google_rate: 1.44   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   theme: news
+  caption_teaser: true   # 10-26〜 説明欄に続きが気になる「つかみ」(caption_teaser.py。ユーザーOK)
   elevenlabs_voice: "pUgmTF2V1ptIKsYb6qON"   # rootbuzz_2_Ryo(男性・会話調)
   elevenlabs_tempo: 1.5   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   voicevox_speaker: 11                       # 玄野武宏 ノーマル

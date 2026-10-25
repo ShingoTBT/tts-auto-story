@@ -15,6 +15,7 @@ video:
   google_voice: "Leda"                       # ja-JP-Chirp3-HD-Leda(女性・若い)
   google_rate: 1.38   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   theme: talk
+  caption_teaser: true   # 10-26〜 説明欄に続きが気になる「つかみ」(caption_teaser.py。ユーザーOK)
   elevenlabs_voice: "PmgfHCGeS5b7sH90BOOJ"   # Fumi(共有ライブラリ・若い女性・落ち着き)
   elevenlabs_tempo: 1.44   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   voicevox_speaker: 8                        # 春日部つむぎ

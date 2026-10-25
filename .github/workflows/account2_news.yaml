@@ -175,6 +175,8 @@ jobs:
         if: steps.video.outcome == 'success'
         continue-on-error: true
         env:
+          # 説明欄のつかみを作る用(10-26〜)
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
         run: python post_video_to_tiktok.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}" "${{ steps.video.outputs.video_dir }}"
