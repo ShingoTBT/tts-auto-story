@@ -193,8 +193,14 @@ def main():
         thumb = folder / "サムネ.png"
         if thumb.exists():
             settings["video_cover_image_url"] = upload(headers, thumb, "image/png", f"{config['account_name']}_{stem}_cover.png")
+        # 10-26〜 説明欄を「■タイトル / 続きが気になるつかみ / #ハッシュタグ」に(ユーザー希望。作れなければつかみ無し)
+        teaser = ""
+        if vcfg.get("caption_teaser"):
+            from caption_teaser import make_teaser
+            teaser = make_teaser(source_text_path.read_text(encoding="utf-8"), vcfg.get("theme", ""))
+            print("説明欄のつかみ:", teaser or "(無し)")
         payload = {
-            "content": f"{title}\n{hashtags}",
+            "content": "\n".join(x for x in (title, teaser, hashtags) if x),
             "mediaItems": [{"type": "video", "url": video_url}],
             "platforms": [{"platform": "tiktok", "accountId": account_id}],
             "tiktokSettings": settings,
@@ -221,6 +227,7 @@ def main():
         "posted_at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(timespec="seconds"),
         "source": str(source_text_path),
         "title": title,
+        "teaser": teaser,
         "voice_engine": voice.get("engine"),
         "voice": voice.get("voice"),
         "voice_reason": voice.get("reason"),
