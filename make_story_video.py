@@ -140,13 +140,33 @@ def elevenlabs_remaining():
         return None
 
 
+def _ja_big_number(m):
+    """14,000 → 1万4000、1,650,000,000 → 16億5000万(声が「じゅうよんせんえん」と読まないように。10-25 ユーザー指摘)"""
+    n = int(m.group(0).replace(",", ""))
+    if n < 10000:
+        return str(n)
+    parts = []
+    for unit, size in (("兆", 10 ** 12), ("億", 10 ** 8), ("万", 10 ** 4)):
+        if n >= size:
+            parts.append(f"{n // size}{unit}")
+            n %= size
+    if n:
+        parts.append(str(n))
+    return "".join(parts)
+
+
+# 3桁ごとのカンマ付きの数(14,000)と、カンマ無しの5桁以上の数(14000)。小数・型番のように前後に英数字があるものは触らない
+_BIG_NUMBER_RE = re.compile(r"(?<![A-Za-z0-9.,])(?:\d{1,3}(?:,\d{3})+|\d{5,})(?![A-Za-z0-9.]|,\d)")
+
+
 def to_reading(text):
     for a, b in READ:
         text = text.replace(a, b)
-    return text
+    return _BIG_NUMBER_RE.sub(_ja_big_number, text)
 
 
 def _norm(s):
+    s = _BIG_NUMBER_RE.sub(_ja_big_number, s)
     s = "".join(ch for ch in s if ch not in "、。.,!?！？ 　\n「」『』…")
     for a, b in READ:
         s = s.replace(b, a)
