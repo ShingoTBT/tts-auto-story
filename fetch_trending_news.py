@@ -374,6 +374,21 @@ def main():
 
     config = load_account_config(sys.argv[1])
 
+    # 10-25〜 ユーザーが「次の1回だけこのネタで」と指定したもの(<output_dir>/next_topic.json)。使ったら消える
+    next_topic = Path(config["output_dir"]) / "next_topic.json"
+    if next_topic.exists():
+        from buzz_followup import angle_note
+        want = json.loads(next_topic.read_text(encoding="utf-8"))
+        post_text = Path(want["source"]).read_text(encoding="utf-8") if Path(want["source"]).exists() else ""
+        result = {"keyword": want["keyword"], "article_url": want.get("article_url", ""), "article_source": "",
+                  "article_text": want.get("article_text") or post_text, "buzz_root": want["source"],
+                  "angle_note": angle_note({"title": want["title"], "post_text": post_text})}
+        with open(Path(config["output_dir"]) / "trend_candidate.json", "w", encoding="utf-8") as f:
+            json.dump(result, f, ensure_ascii=False, indent=2)
+        next_topic.unlink()
+        print(f"採用(ユーザー指定の1回だけのネタ): {want['title']}")
+        return
+
     # ジャンル指定のときは、一度使った記事を2週間使わない(10-23 同じ記事が2日後にまた選ばれたため)。それ以外は今までどおり24時間
     reuse_hours = 24 * int(config.get("topic_reuse_days", 14)) if config.get("topic_filter") else 24
     recent_keywords = load_recent_keywords(config["titles_log_file"], hours=reuse_hours)
