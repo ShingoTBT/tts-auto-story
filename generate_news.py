@@ -23,6 +23,7 @@ from generate import (
     append_title_log,
     load_system_prompt,
     validate_output_format,
+    fix_english_numbers,
     extract_title,
     strip_meta_commentary,
     use_queued_post,
@@ -94,6 +95,9 @@ def validate_question_ending(text: str) -> tuple[bool, str]:
     if not content_lines:
         return False, "第3ブロックの本文が見つかりません"
     last_line = content_lines[-1]
+    # 10-24〜 ニュース動画は疑問文のあとに「良ければコメントで教えてください！」を入れる → その前の行を見る
+    if "？" not in last_line and "?" not in last_line and "コメント" in last_line and len(content_lines) >= 2:
+        last_line = content_lines[-2]
 
     if "？" not in last_line and "?" not in last_line:
         return False, f"第3ブロックの最後が疑問形(？)で終わっていません: 「{last_line}」"
@@ -168,6 +172,7 @@ def _run():
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
+        output_text = fix_english_numbers(output_text)
         # タイトル行に誤って角括弧が含まれた場合の安全策として除去
         lines = output_text.split("\n")
         if lines:

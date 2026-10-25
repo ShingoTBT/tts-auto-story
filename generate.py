@@ -42,6 +42,23 @@ _EMOJI_PERIOD_RE = re.compile(
 )
 
 
+_EN_NUMS = {"zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
+            "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+            "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30,
+            "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90, "hundred": 100}
+# 日本語の文字のすぐ前にある英語の数(「six時」など)。「ONE OK ROCK」のように後ろが空白・英字のものは触らない
+_EN_NUM_RE = re.compile(r"(?<![A-Za-z])(" + "|".join(sorted(_EN_NUMS, key=len, reverse=True)) + r")(?=[぀-ヿ一-鿿])",
+                        re.IGNORECASE)
+
+
+def fix_english_numbers(text: str) -> str:
+    """AI がたまに書く「毎朝six時」を「毎朝6時」に直す(10-25 アカウント6で投稿されてしまった。ユーザー指摘)"""
+    def to_digit(m):
+        print(f"  英語の数を直しました: {m.group(0)} → {_EN_NUMS[m.group(1).lower()]}")
+        return str(_EN_NUMS[m.group(1).lower()])
+    return _EN_NUM_RE.sub(to_digit, text)
+
+
 def strip_period_after_emoji(text: str) -> str:
     """「しんどい🥺。」の「。」を消す(行の終わりにあるものだけ。文の途中はそのまま)"""
     return _EMOJI_PERIOD_RE.sub(r"\1", text)
@@ -243,6 +260,7 @@ def main():
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
         output_text = strip_period_after_emoji(output_text)
+        output_text = fix_english_numbers(output_text)
         is_valid, message = validate_output_format(output_text)
 
         if is_valid:
