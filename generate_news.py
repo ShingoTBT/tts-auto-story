@@ -24,6 +24,7 @@ from generate import (
     load_system_prompt,
     validate_output_format,
     fix_english_numbers,
+    check_ai_leak,
     extract_title,
     strip_meta_commentary,
     use_queued_post,
@@ -186,6 +187,10 @@ def _run():
             is_valid, msg = validate_question_ending(output_text)
         if is_valid:
             is_valid, msg = validate_casual_tone(output_text)
+        if is_valid:
+            leak = check_ai_leak(output_text)
+            if leak:
+                is_valid, msg = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」"
         if is_valid:
             break
 

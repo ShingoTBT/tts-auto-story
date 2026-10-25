@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
+from generate import check_ai_leak, fix_english_numbers, claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, strip_meta_commentary
 
 
 def strip_wrapping_quotes(text: str) -> str:
@@ -155,7 +155,12 @@ def _run():
         output_text = strip_wrapping_quotes(output_text)
         output_text = enforce_period_linebreaks(output_text)
         output_text = strip_period_after_emoji(output_text)
+        output_text = fix_english_numbers(output_text)
         is_valid, msg = validate_length(output_text, min_chars, max_chars)
+        if is_valid:
+            leak = check_ai_leak(output_text)
+            if leak:
+                is_valid, msg = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」"
         if is_valid:
             break
         print(f"[試行{attempt}] {msg}")

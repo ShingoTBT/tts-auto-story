@@ -64,6 +64,62 @@ def strip_period_after_emoji(text: str) -> str:
     return _EMOJI_PERIOD_RE.sub(r"\1", text)
 
 
+_META_WORDS = r"以下|ルール|新規|作成|文字数|字数|構成|指示|プロンプト|ブロック|出力|本文|タイトル|ハッシュタグ|条件|注意|修正|書き直"
+# かっこで囲まれた1行・※で始まる1行のうち、作業の説明の言葉を含むもの
+_META_LINE_RE = re.compile(r"(?:[（(【\[〔][^）)】\]〕]*(?:" + _META_WORDS + r")[^）)】\]〕]*[）)】\]〕]|※.*(?:" + _META_WORDS + r").*)")
+# 消したあとも残っていたら、投稿させずに作り直す言い回し
+META_LEFTOVER_RE = re.compile(r"ルールに沿|新規作成|以下、|文字数|プロンプト|（注|\(注|構成案|ハッシュタグ\d|第\d?ブロック")
+
+
+def find_meta_leftover(text: str):
+    """本文(ハッシュタグ行を除く)に AI の作業メモらしい言い回しが残っていれば、その行を返す"""
+    for line in text.split("\n"):
+        if line.strip().startswith("#"):
+            continue
+        if META_LEFTOVER_RE.search(line):
+            return line.strip()
+    return None
+
+
+LEAK_CHECK_MODEL = "claude-sonnet-4-6"
+# AI の返事の決まり文句(投稿の中身として出てくることはまず無いもの)。AI の話題のニュースもあるので「AI」などの言葉自体は、別の AI の読み直しで中身から判断する
+_LEAK_WORDS_RE = re.compile(r"承知しました|かしこまりました|言語モデル|AIアシスタント|ご依頼の")
+
+
+def check_ai_leak(text: str):
+    """投稿の中に「AI が作っている」「作業の裏側」がわかる文があれば、その文を返す(無ければ None)。
+    2026-10-25〜 ユーザー「AIでやっていることがバレるようなことは絶対NG」。
+    決まった言葉で探したうえで、別の AI にも1回読ませる(言葉だけでは拾えない独り言・作業メモ・前置きのため)"""
+    hit = find_meta_leftover(text)
+    if hit:
+        return hit
+    for line in text.split("\n"):
+        if _LEAK_WORDS_RE.search(line):
+            return line.strip()
+    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if not key:
+        return None
+    prompt = (
+        "次の文章は、SNS(TikTok・Threads)に本人の投稿としてそのまま載せる完成原稿です。\n"
+        "読んだ人に「AI が作っている」「誰かの指示で作業して書いている」と気づかれる部分が1つでもないか確かめてください。\n"
+        "例：作業メモ・注記（「以下、ルールに沿って」「新しく〇〇で」「文字数」など）、前置きや締めの独り言（「作成しました」「いかがでしょうか」）、"
+        "指示・ルール・テーマ・切り口への言及、AI・生成・プロンプトへの言及、同じタイトルが2回あるなど原稿でない部分。\n"
+        "物語やニュースの中身として自然な文は問題ありません（例：登場人物がAIの話をしているニュースは可）。\n"
+        "問題が無ければ「OK」だけ、あれば「NG：」に続けてその部分をそのまま書いてください。\n\n"
+        "--- 原稿 ---\n" + text
+    )
+    try:
+        r = anthropic.Anthropic(api_key=key).messages.create(
+            model=LEAK_CHECK_MODEL, max_tokens=200, messages=[{"role": "user", "content": prompt}])
+        answer = "".join(b.text for b in r.content if getattr(b, "type", "") == "text").strip()
+    except Exception as e:
+        print(f"  AI の読み直しができませんでした(言葉での確認だけで進めます): {e}")
+        return None
+    if answer.startswith("NG"):
+        return answer[3:].strip() or answer
+    return None
+
+
 def strip_meta_commentary(text: str) -> str:
     """
     AIが誤って出力に混入させがちな、自己チェック・メタ情報を除去する安全策。
@@ -101,7 +157,19 @@ def strip_meta_commentary(text: str) -> str:
             continue
         if re.fullmatch(r"-{2,}", stripped):
             continue
+        # 10-25 「（以下、ルールに沿って新規作成）」のような、AI の作業メモの行(ユーザー「絶対ダメ」)
+        if _META_LINE_RE.fullmatch(stripped):
+            print(f"  作業メモの行を消しました: {stripped}")
+            continue
         cleaned.append(line)
+
+    # 10-25 最初の区切りより前に「■」の行が2つ以上ある = 前の方は AI の独り言(「■…はもう書かない。新しく〇〇で。」)。
+    # 最後の「■」の行から始める
+    first_sep = next((i for i, l in enumerate(cleaned) if re.match(r"^\s*={2,}\s*$", l)), len(cleaned))
+    heads = [i for i in range(first_sep) if cleaned[i].strip().startswith("■")]
+    if len(heads) >= 2:
+        print(f"  タイトルの前の独り言を消しました: {' / '.join(l.strip() for l in cleaned[:heads[-1]] if l.strip())}")
+        cleaned = cleaned[heads[-1]:]
 
     result = "\n".join(cleaned)
     # 除去した結果できた3連続以上の空行を整理
@@ -191,6 +259,9 @@ def validate_output_format(text: str) -> tuple[bool, str]:
 
     if not lines or lines[0].strip() == "":
         return False, "1行目のタイトルが空です。"
+    # タイトルは体言止めの一言。「。」があったり長すぎたりするのは、AI の独り言が入ったもの
+    if "。" in lines[0] or len(lines[0].strip()) > 40:
+        return False, f"1行目がタイトルらしくありません: 「{lines[0].strip()}」"
 
     separator_count = sum(1 for line in lines if re.match(r"^\s*={2,}\s*$", line))
     if separator_count < 2:
@@ -199,6 +270,10 @@ def validate_output_format(text: str) -> tuple[bool, str]:
     hashtag_lines = [line for line in lines if line.strip().startswith("#")]
     if not hashtag_lines:
         return False, "ハッシュタグ行(#始まり)が見つかりません。"
+
+    leftover = find_meta_leftover(text)
+    if leftover:
+        return False, f"AI の作業メモらしい文が残っています: 「{leftover}」"
 
     return True, "OK"
 
@@ -262,6 +337,10 @@ def main():
         output_text = strip_period_after_emoji(output_text)
         output_text = fix_english_numbers(output_text)
         is_valid, message = validate_output_format(output_text)
+        if is_valid:
+            leak = check_ai_leak(output_text)
+            if leak:
+                is_valid, message = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」"
 
         if is_valid:
             break

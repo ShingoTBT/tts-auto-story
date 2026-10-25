@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 import anthropic
 
-from generate import fix_english_numbers, claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary, use_queued_post
+from generate import check_ai_leak, find_meta_leftover, fix_english_numbers, claude_extra_params, strip_period_after_emoji, load_recent_titles, append_title_log, load_system_prompt, extract_title, strip_meta_commentary, use_queued_post
 
 
 def load_account_config(config_path: str) -> dict:
@@ -114,6 +114,9 @@ def validate_output(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
     hashtag_lines = [l for l in lines if l.strip().startswith("#")]
     if not hashtag_lines:
         return False, "ハッシュタグ行が見つかりません"
+    leftover = find_meta_leftover(text)
+    if leftover:
+        return False, f"AI の作業メモらしい文が残っています: 「{leftover}」"
     tag_count = len(re.findall(r"#\S+", hashtag_lines[0]))
     if tag_count != 3:
         return False, f"ハッシュタグ数が{tag_count}個です(3個である必要があります)"
@@ -269,6 +272,10 @@ def _run():
             if new_title and new_title in sibling_titles:
                 is_valid = False
                 msg = f"姉妹アカウントの投稿とタイトルが完全一致({new_title})のため、リトライします"
+        if is_valid:
+            leak = check_ai_leak(output_text)
+            if leak:
+                is_valid, msg = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」"
 
         if is_valid:
             break
