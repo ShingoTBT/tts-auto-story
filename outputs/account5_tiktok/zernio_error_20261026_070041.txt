@@ -1,0 +1,3 @@
+status_code: 502
+url: https://late-media.613d73a46130ed0083c059a837d6511b.r2.cloudflarestorage.com/temp/1792998174774_c5ah6nui_account5_tiktok_engagement_20261026_070041.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=0c2cf252753a4d0cae599921de485cdf%2F20261026%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261026T070254Z&X-Amz-Expires=3600&X-Amz-Signature=7df66ed3f1ac043c5d87208b17c2053b39b7834efa9d081d680dc249bca9060d&X-Amz-SignedHeaders=host&x-id=PutObject
+response_body: <?xml version="1.0" encoding="UTF-8"?><Error><Code>InternalError</Code><Message>We encountered an internal connectivity issue. Please try again.</Message></Error>
