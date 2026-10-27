@@ -85,6 +85,22 @@ jobs:
               print("skip=" + ("true" if skip else "false"), file=f)
           EOF
 
+      # 10-28〜 06:00・11:00 の回は「社会人なら知っておくべき最新ニュース」の解説(account2_explainer.yaml)、それ以外は芸能・スポーツ
+      # 起動が遅れても、いま何時の枠の回か(01・06・11・16・21時のうち、今より前で一番近いもの)で決める
+      - name: Pick config by time slot
+        id: pick
+        run: |
+          python - <<'EOF2'
+          import datetime, os
+          now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9)))
+          slots = [1, 6, 11, 16, 21]
+          slot = max([h for h in slots if h <= now.hour], default=21)
+          cfg = "accounts/account2_explainer.yaml" if slot in (6, 11) else "accounts/account2_news.yaml"
+          print(f"now {now:%H:%M} JST → slot {slot}:00 → {cfg}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              print("config=" + cfg, file=f)
+          EOF2
+
       - name: Fetch trending news candidate
         id: fetch
         if: steps.guard.outputs.skip != 'true'
@@ -94,7 +110,7 @@ jobs:
           # バズった投稿の確認用(再生数)
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
-        run: python fetch_trending_news.py accounts/account2_news.yaml
+        run: python fetch_trending_news.py ${{ steps.pick.outputs.config }}
 
       - name: Generate news story
         id: generate
@@ -102,7 +118,7 @@ jobs:
         continue-on-error: true
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python generate_news.py accounts/account2_news.yaml
+        run: python generate_news.py ${{ steps.pick.outputs.config }}
 
       - name: Build narrated video (ElevenLabs → Google Chirp 3 HD → VOICEVOX)
         id: video
@@ -120,7 +136,7 @@ jobs:
         run: |
           src="${{ steps.generate.outputs.output_path }}"
           out="$(dirname "$src")/videos/$(basename "$src" .txt)"
-          python make_story_video.py --config accounts/account2_news.yaml "$src" "$out"
+          python make_story_video.py --config ${{ steps.pick.outputs.config }} "$src" "$out"
           echo "video_dir=$out" >> "$GITHUB_OUTPUT"
 
       - name: Commit and push generated content (images must be public before posting)
@@ -179,14 +195,14 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
-        run: python post_video_to_tiktok.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}" "${{ steps.video.outputs.video_dir }}"
+        run: python post_video_to_tiktok.py ${{ steps.pick.outputs.config }} "${{ steps.generate.outputs.output_path }}" "${{ steps.video.outputs.video_dir }}"
 
       - name: Notify ChatWork
         if: steps.generate.outcome == 'success' && steps.post_tiktok.outcome == 'success'
         env:
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
-        run: python notify_chatwork.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}"
+        run: python notify_chatwork.py ${{ steps.pick.outputs.config }} "${{ steps.generate.outputs.output_path }}"
 
       # 投稿(Zernio)に失敗したときは「投稿通知」ではなく失敗の知らせを送る(同じアカウントは6時間に1回まで)
       - name: Notify ChatWork (post failed)
@@ -195,7 +211,7 @@ jobs:
         env:
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
-        run: python notify_chatwork.py accounts/account2_news.yaml "${{ steps.generate.outputs.output_path }}" --failed
+        run: python notify_chatwork.py ${{ steps.pick.outputs.config }} "${{ steps.generate.outputs.output_path }}" --failed
 
       - name: Commit any remaining changes (e.g. error debug files)
         if: always()

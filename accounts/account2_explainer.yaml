@@ -1,0 +1,56 @@
+# 2026-10-28〜 アカウント2の解説ニュース(1日2本: 06:00・11:00。ユーザー案)。それ以外の時刻は account2_news.yaml(芸能・スポーツ)。
+# ワークフロー account2_news.yaml が、起動した時刻(日本時間)でどちらの設定を使うか決める。投稿の記録・タイトルの記録は同じ場所を使う
+account_name: "account2_news"
+display_name: "話題のニュース_アカウント2"
+chatwork_label: "話題のニュース_アカウント2"
+tiktok_url: "https://tiktok.com/@user8258702569269"
+prompt_file: "prompts/news_explainer_v1.md"  # 時事ニュースのやさしい解説(約450字・1分10秒)
+titles_log_file: "logs/account2_news_titles.jsonl"
+google_trend_ratio: 0.0  # 0.0=はてな100%, 1.0=Google100%, 0.5=半々
+# ネタ: はてな＋Yahoo!ニュースのトピックス(経済・国内・IT・国際・科学)から、社会人が知っておくべき話題を AI が選ぶ
+topic_filter: "社会人が知っておくべき時事ニュース(お金・物価・仕事・働き方・税金・社会の仕組み・テクノロジーなど、生活や仕事に関係があり「そもそも何？なぜ？」をやさしく解説すると役に立つもの)"
+topic_filter_rules:
+  - "事件・事故・災害・死亡・病気・犯罪のニュースは除外"
+  - "特定の政党・政治家・選挙・宗教への賛否が分かれる話は除外(制度や仕組みそのものの説明ならよい)"
+  - "芸能・スポーツ・ゴシップは除外(それは別の時刻の投稿で扱う)"
+  - "失言・謝罪・炎上・批判・騒動・処分など、誰かが責められている話題も除外"
+topic_filter_model: "claude-sonnet-4-6"
+topic_fallback_keywords: []
+topic_extra_rss:
+  - "https://news.yahoo.co.jp/rss/topics/business.xml"  # Yahoo!ニュース トピックス(経済)
+  - "https://news.yahoo.co.jp/rss/topics/domestic.xml"  # 国内
+  - "https://news.yahoo.co.jp/rss/topics/it.xml"  # IT
+  - "https://news.yahoo.co.jp/rss/topics/world.xml"  # 国際
+  - "https://news.yahoo.co.jp/rss/topics/science.xml"  # 科学
+require_casual_tone: false   # 若者言葉(マジで・ワンチャン)は使わないので確認しない
+output_dir: "outputs/account2_news"
+# 2026-10-23〜 動画で投稿(ナレーション付き。make_story_video.py / post_video_to_tiktok.py)
+# 声は ElevenLabs、今月の残りが足りない・エラーのときは VOICEVOX(無料)。どちらを使ったかは毎朝のレポートに出る
+video:
+  # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
+  google_voice: "Puck"                       # ja-JP-Chirp3-HD-Puck(男性・明るい)
+  google_rate: 1.44   # 10-25 元の速さの2割増し(ユーザー「2割で」)
+  theme: explain   # 札が「社会人なら知っておくべき最新ニュース / 誰にでも分かりやすく解説」(最初にバーンと出る)
+  caption_teaser: true   # 10-26〜 説明欄に続きが気になる「つかみ」(caption_teaser.py。ユーザーOK)
+  elevenlabs_voice: "pUgmTF2V1ptIKsYb6qON"   # rootbuzz_2_Ryo(男性・会話調)
+  elevenlabs_tempo: 1.5   # 10-25 元の速さの2割増し(ユーザー「2割で」)
+  voicevox_speaker: 11                       # 玄野武宏 ノーマル
+  voicevox_name: "玄野武宏"
+  voicevox_tempo: 1.56   # 10-25 元の速さの2割増し(ユーザー「2割で」)
+  music_genres: ["POP", "ELECTRONIC", "DANCE_POP", "HIP_HOP/RAP", "EDM", "TROPICAL_HOUSE"]
+notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
+schedule_jst:
+  - "01:00"
+  - "06:00"
+  - "11:00"
+  - "16:00"
+  - "21:00"
+image_tool_url: "https://alley-oop.co.jp/tools/TikTok-Story/"
+model: "claude-sonnet-4-6"
+recent_titles_count: 30
+buzz_followup: false   # 解説の回は、バズったネタの追いかけはしない(芸能・スポーツの回だけ)
+zernio_account_id_env: "ZERNIO_TIKTOK_ACCOUNT_ID_2"  # TikTok連携後にSecrets登録
+
+monitor_platform: "tiktok"  # 監視用: tiktok または threads
+monitor_max_interval_hours: 8  # これ以上投稿間隔が空いたら異常とみなす
+monitor_recovery_workflow: "account2_news.yaml"  # 停滞検知時に自動再実行するワークフロー

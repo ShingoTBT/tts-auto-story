@@ -193,7 +193,7 @@ def _run():
             is_valid, msg = validate_hashtag_count(output_text)
         if is_valid:
             is_valid, msg = validate_question_ending(output_text)
-        if is_valid:
+        if is_valid and config.get("require_casual_tone", True):   # 解説ニュースは若者言葉を使わないので確認しない
             is_valid, msg = validate_casual_tone(output_text)
         if is_valid:
             leak = check_ai_leak(output_text)
