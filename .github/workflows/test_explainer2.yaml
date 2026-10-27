@@ -1,0 +1,50 @@
+name: test explainer2 (temporary)
+on:
+  push:
+    branches: [test-explainer2]
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: fonts
+        run: |
+          mkdir -p fonts
+          for f in Sans/SubsetOTF/JP/NotoSansJP-Bold.otf Serif/SubsetOTF/JP/NotoSerifJP-SemiBold.otf; do
+            curl -fsSL --retry 3 -o "fonts/$(basename "$f")" "https://github.com/notofonts/noto-cjk/raw/main/$f"
+          done
+      - name: ffmpeg
+        run: |
+          if ! command -v ffmpeg >/dev/null; then
+            curl -fsSL --retry 3 -o /tmp/ff.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+            tar -xf /tmp/ff.tar.xz -C /tmp
+            sudo cp /tmp/ffmpeg-*-static/ffmpeg /tmp/ffmpeg-*-static/ffprobe /usr/local/bin/
+          fi
+      - name: run like production (no post)
+        env:
+          GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          mkdir -p test_out
+          {
+          python fetch_trending_news.py accounts/account2_explainer.yaml
+          echo "GITHUB_OUTPUT=/tmp/gh_out" > /dev/null
+          GITHUB_OUTPUT=/tmp/gh_out python generate_news.py accounts/account2_explainer.yaml
+          src=$(grep output_path /tmp/gh_out | cut -d= -f2)
+          cp "$src" test_out/台本.txt
+          cp outputs/account2_news/trend_candidate.json test_out/元記事.json
+          python make_story_video.py --config accounts/account2_explainer.yaml "$src" test_out/video
+          python -c "from caption_teaser import make_teaser; print('つかみ:', make_teaser(open('$src',encoding='utf-8').read(), 'explain'))"
+          } 2>&1 | tee test_out/log.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+          git add -f test_out && git commit -m "test explainer2 output" && git push
