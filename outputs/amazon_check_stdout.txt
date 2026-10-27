@@ -1,6 +1,0 @@
-トークン取得成功: Atc|MQICIBMkgrC0hzUJ...
-検索結果: {
-  "name": "Francfranc フランフラン プチミニョン ハンドクリームセット ホワイト 3個セット 女性 贈り物 ギフト プレゼント",
-  "url": "https://www.amazon.co.jp/dp/B0FT77G4B3?tag=kokodawancom-22&linkCode=osi&th=1&psc=1"
-}
-検索エラー: ModuleNotFoundError("No module named 'yaml'")
