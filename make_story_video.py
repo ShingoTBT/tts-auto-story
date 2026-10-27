@@ -537,6 +537,11 @@ ACCENTS = {
 }
 ACCENT_MODEL = "claude-sonnet-4-6"
 
+# 10-28〜 解説ニュース(アカウント2の1日2本。accounts/account2_explainer.yaml)。見た目と音はニュースと同じで、札だけ2行
+THEMES["explain"] = dict(THEMES["news"], tag=("社会人なら知っておくべき最新ニュース\n誰にでも分かりやすく解説", (230, 40, 60), (255, 255, 255)))
+SFX["explain"] = SFX["news"]
+ACCENTS["explain"] = ACCENTS["news"]
+
 
 def choose_accents(theme, sentences, work):
     """台本の文(番号, 文)から、内容に合う文にだけ効果音を選ぶ。{番号: 音の名前}。合う文が無い・AI が使えないときは {}"""
@@ -647,12 +652,14 @@ class Painter:
         self.body_font = ImageFont.truetype(font_path, 52)
         self.tag_font = ImageFont.truetype(find_sans(), 40)
         self.big_tag_font = ImageFont.truetype(find_sans(), 78)
+        self.sub_tag_font = ImageFont.truetype(find_sans(), 34)
         self.credit_font = ImageFont.truetype(find_sans(), 30)
         try:
             self.title_font.set_variation_by_axes([800 if self.th["font"] == "sans" else 700])
             self.body_font.set_variation_by_axes([600 if self.th["font"] == "sans" else 500])
             self.tag_font.set_variation_by_axes([800])
             self.big_tag_font.set_variation_by_axes([900])
+            self.sub_tag_font.set_variation_by_axes([700])
         except Exception:
             pass
         rnd = random.Random(seed)
@@ -718,6 +725,37 @@ class Painter:
             d.rounded_rectangle([x0, y0, x0 + bw, y0 + bh], radius=34, fill=bg + (255,))
             d.text(((W - tw) / 2, y0 + (bh - 100) / 2), label, font=f, fill=fg + (255,))
             y = 330
+        elif th["tag"] and "\n" in th["tag"][0]:
+            # 2行の札(10-28〜 解説ニュース「社会人なら知っておくべき最新ニュース / 誰にでも分かりやすく解説」)
+            # 最初に「バーン」と大きく飛び出して、弾んで止まる(ユーザー希望。冒頭の「ドーン」の音に合わせる)
+            if not hasattr(self, "_tag2"):
+                label, bg, fg = th["tag"]
+                main, sub = label.split("\n", 1)
+                tw = max(d.textlength(main, font=self.tag_font), d.textlength(sub, font=self.sub_tag_font))
+                pw, ph = int(tw + 72), 128
+                pill = Image.new("RGBA", (pw + 20, ph + 20), (0, 0, 0, 0))
+                pd = ImageDraw.Draw(pill)
+                pd.rounded_rectangle([14, 16, pw + 14, ph + 16], radius=30, fill=(0, 0, 0, 90))   # 影
+                pd.rounded_rectangle([0, 0, pw, ph], radius=30, fill=bg + (255,))
+                for text, font, yy in ((main, self.tag_font, 12), (sub, self.sub_tag_font, 70)):
+                    pd.text(((pw - pd.textlength(text, font=font)) / 2, yy), text, font=font, fill=fg + (255,))
+                self._tag2 = pill
+            pill = self._tag2
+            if t < 0.12:
+                scale = 0.2 + (1.5 - 0.2) * (t / 0.12)
+            elif t < 0.28:
+                scale = 1.5 - 0.58 * ((t - 0.12) / 0.16)
+            elif t < 0.42:
+                scale = 0.92 + 0.08 * ((t - 0.28) / 0.14)
+            else:
+                scale = 1.0
+            if scale != 1.0:
+                pill = pill.resize((max(1, int(pill.width * scale)), max(1, int(pill.height * scale))), Image.BILINEAR)
+            if t < 0.3:   # 一瞬の白い光(札の後ろ)
+                layer.alpha_composite(Image.new("RGBA", (W, H), (255, 255, 255, int(150 * (1 - t / 0.3)))))
+            cx, cy = W / 2, y + 64
+            layer.alpha_composite(pill, (int(cx - (self._tag2.width - 20) * scale / 2), int(cy - (self._tag2.height - 20) * scale / 2)))
+            y += 170
         elif th["tag"]:
             label, bg, fg = th["tag"]
             tw = d.textlength(label, font=self.tag_font)

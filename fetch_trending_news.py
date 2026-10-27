@@ -304,8 +304,17 @@ def extract_article_text(url: str) -> str:
         downloaded = trafilatura.fetch_url(url)
         if not downloaded:
             return ""
-        text = trafilatura.extract(downloaded) or ""
-        return text.strip()
+        text = (trafilatura.extract(downloaded) or "").strip()
+        # 10-28 Yahoo!ニュースのトピックス(pickup)は要約だけなので、元の記事までたどって読む
+        # (要約だけで解説を書かせたら、記事に無い理由を補ってしまったため)
+        if "news.yahoo.co.jp/pickup/" in url:
+            m = re.search(r"https://news\.yahoo\.co\.jp/articles/[0-9a-f]+", downloaded)
+            if m:
+                full = (trafilatura.extract(trafilatura.fetch_url(m.group(0)) or "") or "").strip()
+                if full:
+                    print(f"  要約ページから元の記事へ: {m.group(0)}(記事 {len(full)}字＋要約 {len(text)}字)")
+                    return full + "\n\n【Yahoo!ニュースの要約ページ】\n" + text
+        return text
     except Exception as e:
         print(f"  記事抽出エラー ({url}): {e}")
         return ""
