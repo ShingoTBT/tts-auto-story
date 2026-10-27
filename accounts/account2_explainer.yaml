@@ -22,6 +22,8 @@ topic_extra_rss:
   - "https://news.yahoo.co.jp/rss/topics/it.xml"  # IT
   - "https://news.yahoo.co.jp/rss/topics/world.xml"  # 国際
   - "https://news.yahoo.co.jp/rss/topics/science.xml"  # 科学
+# 題名にこの言葉がある記事は、AI に見せる前に外す(政治・選挙・政党の話を確実に避ける。10-28 試しで消費減税・前副大臣の要求などが候補に入ったため)
+topic_exclude_regex: "選挙|政党|議員|大臣|首相|総理|国会|与党|野党|自民|立憲|維新|公明|共産党|国民民主|参政|れいわ|政権|政策|生活保護|知事|市長|官房長官|補選|衆院|参院|首長"
 require_casual_tone: false   # 若者言葉(マジで・ワンチャン)は使わないので確認しない
 output_dir: "outputs/account2_news"
 # 2026-10-23〜 動画で投稿(ナレーション付き。make_story_video.py / post_video_to_tiktok.py)

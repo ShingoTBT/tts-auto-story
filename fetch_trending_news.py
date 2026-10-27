@@ -416,6 +416,13 @@ def main():
         # ジャンル指定あり: はてな＋専門RSSから、ジャンルに合うものだけを話題性の順に使う
         print(f"ジャンル指定: {topic}")
         all_items = [i for i in fetch_topic_items(config) if i["keyword"] not in recent_keywords]
+        # 10-28〜 題名にこの言葉がある記事は、AI に見せる前に外す(解説ニュースで政治の話を確実に避けるため。設定 topic_exclude_regex)
+        if config.get("topic_exclude_regex"):
+            ng = re.compile(config["topic_exclude_regex"])
+            dropped = [i["keyword"] for i in all_items if ng.search(i["keyword"])]
+            all_items = [i for i in all_items if not ng.search(i["keyword"])]
+            if dropped:
+                print(f"  決めた言葉で外した記事: {len(dropped)}件(例: {dropped[:3]})")
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
         # 10-25〜 2日前までの投稿にバズったものがあれば、同じネタを別の切り口で(buzz_followup.py)
         if config.get("buzz_followup"):
