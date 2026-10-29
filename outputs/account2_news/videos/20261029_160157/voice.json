@@ -1,0 +1,10 @@
+{
+  "engine": "Google",
+  "voice": "Puck",
+  "reason": "ElevenLabs の残りが足りない(残り377字・必要728字)",
+  "chars": 330,
+  "google_used_this_month": 3485,
+  "google_free_chars": 1000000,
+  "elevenlabs_remaining": 377,
+  "elevenlabs_limit": 40000
+}
