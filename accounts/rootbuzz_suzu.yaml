@@ -6,3 +6,7 @@ chatwork_label: "金運まじない師｜すず"
 tiktok_url: "https://tiktok.com/@suzu_kinun"
 zernio_api_key_env: "ZERNIO_API_KEY_KINUN"  # Zernio の5つ目(zernio5)
 zernio_account_id: "6adcc9da2cf74383c4ffbae4"
+# コメントの返信：願いごと（おまじない・お参りへの「〇〇しますように」など）には手を合わせる絵文字を返す（2026-10-30 ユーザー希望）。それ以外はいつもの絵文字からランダム
+reply_rules:
+  - match: ["ますように", "ますよーに", "願", "祈", "叶", "かなう", "かないます", "お守り", "ご縁", "金運アップ", "ありがとうございます"]
+    reply: "🙏✨"

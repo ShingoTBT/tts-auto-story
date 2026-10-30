@@ -39,6 +39,16 @@ def call(method, path, key, **kw):
     return r.status_code, body
 
 
+def pick_reply(comment, cfg):
+    """返す絵文字。アカウント設定の reply_rules（match の言葉がコメントに入っていたら reply を返す）を先に見る
+    2026-10-30 ユーザー：金運すずの「〇〇しますように」などの願いごとには、手を合わせる「🙏✨」を"""
+    text = comment.get("text") or comment.get("message") or ""
+    for rule in cfg.get("reply_rules") or []:
+        if any(w in text for w in rule.get("match", [])):
+            return rule["reply"]
+    return random.choice(EMOJIS)
+
+
 def run_account(config_path):
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     label = cfg.get("chatwork_label", cfg.get("display_name"))
@@ -100,7 +110,7 @@ def run_account(config_path):
             if not liked:
                 st_l, _ = call("POST", f"inbox/comments/{pid}/{cid}/like", key, json={"accountId": acc})
                 liked = st_l == 200
-            emoji = random.choice(EMOJIS)
+            emoji = pick_reply(c, cfg)
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
             r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
                               headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}"},
