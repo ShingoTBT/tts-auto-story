@@ -1,0 +1,8 @@
+# 依頼「ルートバズ」の TikTok アカウント「金運まじない師｜すず」(@suzu_kinun。2026-10-25 新規作成)
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)に使う。
+account_name: "rootbuzz_suzu"
+display_name: "金運まじない師｜すず"
+chatwork_label: "金運まじない師｜すず"
+tiktok_url: "https://tiktok.com/@suzu_kinun"
+zernio_api_key_env: "ZERNIO_API_KEY_KINUN"  # Zernio の5つ目(zernio5)
+zernio_account_id: "6adcc9da2cf74383c4ffbae4"

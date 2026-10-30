@@ -63,10 +63,11 @@ jobs:
           ZERNIO_THREADS_ACCOUNT_ID_2: ${{ secrets.ZERNIO_THREADS_ACCOUNT_ID_2 }}
           ZERNIO_API_KEY_ROOTBUZZ: ${{ secrets.ZERNIO_API_KEY_ROOTBUZZ }}
           ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ }}
+          ZERNIO_API_KEY_KINUN: ${{ secrets.ZERNIO_API_KEY_KINUN }}
           CHATWORK_API_TOKEN: ${{ secrets.CHATWORK_API_TOKEN }}
           CHATWORK_ROOM_ID: ${{ secrets.CHATWORK_ROOM_ID }}
         run: >
           python combined_report.py
           --tiktok accounts/account2_news.yaml accounts/account5_tiktok_engagement.yaml accounts/account6_emotional.yaml
           --threads accounts/account3_threads.yaml accounts/account4_threads_engagement.yaml
-          --rootbuzz accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml
+          --rootbuzz accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml accounts/rootbuzz_suzu.yaml

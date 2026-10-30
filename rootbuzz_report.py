@@ -160,7 +160,35 @@ def build_post_lines(api_key: str, account_id: str) -> tuple[list[str], dict]:
     return lines, totals
 
 
-def build_account_section(config_path: str) -> list[str]:
+def last_scheduled_date(api_key: str, account_id: str):
+    """このアカウントの予約投稿の最終日(日本時間)。予約が無ければ None"""
+    data = zernio_get(api_key, "posts", {"status": "scheduled", "limit": 100})
+    last = None
+    for post in data.get("posts", []):
+        ids = []
+        for pl in post.get("platforms", []):
+            a = pl.get("accountId")
+            ids.append(a.get("_id") if isinstance(a, dict) else a)
+        if account_id not in ids or not post.get("scheduledFor"):
+            continue
+        dt = datetime.datetime.fromisoformat(post["scheduledFor"].replace("Z", "+00:00")) + datetime.timedelta(hours=9)
+        if last is None or dt.date() > last:
+            last = dt.date()
+    return last
+
+
+def schedule_line(api_key: str, account_id: str) -> tuple[str, bool]:
+    """予約の残りの行と、アラートを出すか(最終予約日の前日以降なら出す)"""
+    last = last_scheduled_date(api_key, account_id)
+    if last is None:
+        return "・予約：なし ⚠️", True
+    left = (last - today_jst()).days
+    weekday = "月火水木金土日"[last.weekday()]
+    alert = left <= 1
+    return f"・予約：{last.month}/{last.day}（{weekday}）まで（あと{left}日）" + (" ⚠️" if alert else ""), alert
+
+
+def build_account_section(config_path: str, alerts: list | None = None) -> list[str]:
     config = load_account_config(config_path)
     label = config.get("chatwork_label", config.get("display_name"))
     api_key = os.environ.get(config["zernio_api_key_env"])
@@ -171,6 +199,14 @@ def build_account_section(config_path: str) -> list[str]:
     if not api_key or not account_id:
         body.append("・未接続（GitHub Secrets を確認）")
         return body
+    try:
+        line, alert = schedule_line(api_key, account_id)
+        body.append(line)
+        if alert and alerts is not None:
+            alerts.append(f"{label}：{line.lstrip('・').replace('予約：', '').replace(' ⚠️', '')}")
+    except Exception as e:
+        print(f"エラー(ルートバズ {label} 予約): {e}")
+        body.append("・予約：取得エラー")
     try:
         body.extend(build_account_lines(api_key, account_id))
     except Exception as e:
@@ -193,14 +229,22 @@ def build_account_section(config_path: str) -> list[str]:
 
 
 def build_rootbuzz_report(config_paths: list[str], timestamp_str: str) -> str:
+    alerts = []
+    sections = []
+    for i, config_path in enumerate(config_paths):
+        if i > 0:
+            sections.append("")
+        sections.extend(build_account_section(config_path, alerts))
     body = [
         "＝＝＝＝＝ルートバズレポートです＝＝＝＝＝",
         f"{timestamp_str}現在",
     ]
-    for i, config_path in enumerate(config_paths):
-        if i > 0:
-            body.append("")
-        body.extend(build_account_section(config_path))
+    # 最終予約日の前日になっても次が予約されていなければ、TO で知らせる
+    if alerts:
+        body.append("[To:237628] ⚠️ 予約がもうすぐ切れます（ルートバズのチャットで次の投稿を作って予約してください）")
+        body.extend(f"・{a}" for a in alerts)
+        body.append("")
+    body.extend(sections)
     body.append("")
     body.append("※動画の詳しい数字は、TikTokの集計に投稿から1〜2日かかります")
     body.append("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
