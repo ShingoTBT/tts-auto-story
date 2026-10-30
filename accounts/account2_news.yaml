@@ -28,7 +28,7 @@ output_dir: "outputs/account2_news"
 # 声は ElevenLabs、今月の残りが足りない・エラーのときは VOICEVOX(無料)。どちらを使ったかは毎朝のレポートに出る
 video:
   # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
-  google_voice: "Puck"                       # ja-JP-Chirp3-HD-Puck(男性・明るい)
+  google_voice: "Zubenelgenubi"              # ja-JP-Chirp3-HD-Zubenelgenubi(男性・くだけた話し方)。10-30 Puck から変更(ユーザーが聞き比べて選択)
   google_rate: 1.44   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   theme: news
   caption_teaser: true   # 10-26〜 説明欄に続きが気になる「つかみ」(caption_teaser.py。ユーザーOK)
