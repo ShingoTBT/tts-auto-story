@@ -12,7 +12,8 @@ video:
   google_rate: 1.0
   theme: story
   caption_teaser: true   # 10-26〜 説明欄に続きが気になる「つかみ」(caption_teaser.py。ユーザーOK)
-  elevenlabs_voice: "4lOQ7A2l7HPuG7UIHiKA"   # Kyoko(共有ライブラリ・温かい若い女性)
+  # 2026-10-30 ElevenLabs はニュース(アカウント2)専用に(ユーザー「①で」)。戻すときは次の行の # を外す
+  # elevenlabs_voice: "4lOQ7A2l7HPuG7UIHiKA"   # Kyoko(共有ライブラリ・温かい若い女性)
   elevenlabs_tempo: 1.0
   voicevox_speaker: 14                       # 冥鳴ひまり
   voicevox_name: "冥鳴ひまり"
