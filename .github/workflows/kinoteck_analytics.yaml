@@ -1,0 +1,64 @@
+name: kinoteck_analytics
+
+# TTS分析の依頼：@kinoteck の Zernio analytics を毎日 data/kinoteck/ にためる
+on:
+  schedule:
+    # 毎朝 6:30 JST = 前日 21:30 UTC
+    - cron: "30 21 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: kinoteck-analytics
+  cancel-in-progress: false
+
+jobs:
+  save:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Save analytics
+        env:
+          ZERNIO_API_KEY_KINUN: ${{ secrets.ZERNIO_API_KEY_KINUN }}
+        run: python kinoteck_save_analytics.py
+
+      - name: Commit and push
+        run: |
+          set +e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/kinoteck/
+          git diff --staged --quiet
+          if [ "$?" -eq 0 ]; then
+            echo "no staged changes, nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: kinoteck analytics ($(TZ=Asia/Tokyo date +'%Y-%m-%d %H:%M'))" || exit 1
+
+          pushed=0
+          for i in 1 2 3 4 5; do
+            if ! git pull --rebase origin main; then
+              git rebase --abort >/dev/null 2>&1
+              sleep $((RANDOM % 5 + 1))
+              continue
+            fi
+            if git push; then
+              pushed=1
+              break
+            fi
+            sleep $((RANDOM % 5 + 1))
+          done
+          if [ "$pushed" -ne 1 ]; then
+            echo "::error::failed to push kinoteck analytics after all retries"
+            exit 1
+          fi
