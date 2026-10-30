@@ -1,5 +1,5 @@
 # 依頼「ルートバズ」の TikTok アカウント「金運まじない師｜すず」(@suzu_kinun。2026-10-25 新規作成)
-# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)に使う。
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py。2026-10-30 追加)に使う。
 account_name: "rootbuzz_suzu"
 display_name: "金運まじない師｜すず"
 chatwork_label: "金運まじない師｜すず"

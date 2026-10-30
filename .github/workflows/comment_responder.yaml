@@ -60,7 +60,8 @@ jobs:
           ZERNIO_TIKTOK_ACCOUNT_ID_6: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_6 }}
           ZERNIO_API_KEY_ROOTBUZZ: ${{ secrets.ZERNIO_API_KEY_ROOTBUZZ }}
           ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_ROOTBUZZ }}
-        run: python reply_comments_tiktok.py accounts/account5_tiktok_engagement.yaml accounts/account2_news.yaml accounts/account6_emotional.yaml accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml
+          ZERNIO_API_KEY_KINUN: ${{ secrets.ZERNIO_API_KEY_KINUN }}
+        run: python reply_comments_tiktok.py accounts/account5_tiktok_engagement.yaml accounts/account2_news.yaml accounts/account6_emotional.yaml accounts/rootbuzz_kei.yaml accounts/rootbuzz_mio.yaml accounts/rootbuzz_rina.yaml accounts/rootbuzz_suzu.yaml
 
       - name: Commit reply log
         if: always() && steps.guard.outputs.skip != 'true'
