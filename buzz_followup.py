@@ -3,7 +3,8 @@
 
 - バズ = 投稿から3時間以上たっていて、再生数が「ここ2週間のニュース動画の再生数の中央値の2倍以上」かつ「500回以上」
 - 同じネタの新しい記事があればそれを使い、無ければバズった投稿と同じ記事(または投稿の本文)を、切り口を変えて使う
-- 同じネタで続けるのは2回まで(同じ人ばかりにならないように)
+- 同じネタで続けるのは5回まで。続けて出さず、必ず間に別のネタの投稿を1本以上はさむ(10-31〜 ユーザー希望。前は2回まで・すぐ次の回)
+- 前回の追いかけの投稿が伸びなかった(再生数がふだんの中央値より下)ら、そのネタはそこでやめる
 
 fetch_trending_news.py から find_buzz → pick_buzz_candidate を呼び、
 generate_news.py は作った投稿の元ネタを log_candidate で news_candidates.jsonl に残す(次にバズったときに元の記事を使うため)
@@ -21,8 +22,8 @@ ZERNIO_API_BASE = "https://zernio.com/api/v1"
 BUZZ_MIN_VIEWS = 500
 BUZZ_RATIO = 2.0
 MIN_AGE_HOURS = 3
-LOOK_BACK_HOURS = 48   # 10-26 直近3本 → 2日前まで(ユーザー希望。3本だと半日で外れて、バズを拾えなかった)
-MAX_FOLLOWUPS = 2
+LOOK_BACK_HOURS = 96   # 10-26 直近3本 → 2日前まで(ユーザー希望。3本だと半日で外れて、バズを拾えなかった)。10-31 間をあけて何回も使うので4日前までに
+MAX_FOLLOWUPS = 5      # 10-31 2 → 5(ユーザー「1回だけだともったいない」)
 MEDIAN_DAYS = 14
 CANDIDATE_LOG = "news_candidates.jsonl"
 PICK_MODEL = "claude-sonnet-4-6"
@@ -75,7 +76,7 @@ def _tiktok_posts(config: dict) -> list[dict]:
 
 
 def find_buzz(config: dict):
-    """2日前までの投稿の中でバズったものを探す。無ければ None"""
+    """4日前までの投稿の中でバズったものを探す。無ければ None"""
     out = Path(config["output_dir"])
     posted = _read_jsonl(out / "posted_videos.jsonl")
     if not posted:
@@ -110,18 +111,41 @@ def find_buzz(config: dict):
         if match["views"] >= line:
             buzzed.append((rec, match["views"]))
 
-    # 再生数の多い順に。同じネタをもう2回作ったものは飛ばして、次にバズったものを使う
+    # 再生数の多い順に。同じネタをもう5回作ったもの・直前の投稿と同じネタ・前回の追いかけが伸びなかったものは飛ばす
     log = _read_jsonl(out / CANDIDATE_LOG)
+
+    def root_of(source):
+        entry = next((r for r in reversed(log) if r.get("source") == source), {})
+        return entry.get("buzz_root") or source, entry
+
+    last_root, _ = root_of((posted[-1].get("source") or "").replace("\\", "/"))
+    seen = set()
     for rec, views in sorted(buzzed, key=lambda x: -x[1]):
         source = (rec.get("source") or "").replace("\\", "/")
-        entry = next((r for r in reversed(log) if r.get("source") == source), {})
-        root = entry.get("buzz_root") or source
-        done = sum(1 for r in log if r.get("buzz_root") == root)
-        if done >= MAX_FOLLOWUPS:
-            print(f"  「{rec.get('title')}」はバズっていますが、同じネタはもう{done}回作ったので飛ばします")
+        root, entry = root_of(source)
+        if root in seen:
             continue
-        text = Path(source).read_text(encoding="utf-8") if source and Path(source).exists() else ""
-        print(f"  バズった投稿: {rec.get('title')}({views}回)→ 同じネタを別の切り口で作ります({done + 1}回目)")
+        seen.add(root)
+        followups = [r for r in log if r.get("buzz_root") == root]
+        if len(followups) >= MAX_FOLLOWUPS:
+            print(f"  「{rec.get('title')}」はバズっていますが、同じネタはもう{len(followups)}回作ったので飛ばします")
+            continue
+        if root == last_root:
+            print(f"  「{rec.get('title')}」は直前の投稿と同じネタなので、今回は別のネタをはさみます")
+            continue
+        if followups:
+            last_src = followups[-1].get("source")
+            last_rec = next((r for r in reversed(posted) if (r.get("source") or "").replace("\\", "/") == last_src), {})
+            t = (last_rec.get("title") or "").strip()
+            m = next((p for p in aged if t and p["content"].startswith(t)), None)
+            if m and m["views"] < median:
+                print(f"  「{rec.get('title')}」は前回の追いかけ「{t}」が伸びなかった({m['views']}回)ので、このネタはやめます")
+                continue
+        # 前に同じネタで出した投稿を全部渡す(どれとも違う切り口にするため)。最初の投稿から順に
+        sources = [root] + [r.get("source") for r in followups]
+        texts = [Path(x).read_text(encoding="utf-8") for x in sources if x and Path(x).exists()]
+        text = "\n\n----------\n\n".join(texts)[-6000:]
+        print(f"  バズった投稿: {rec.get('title')}({views}回)→ 同じネタを別の切り口で作ります({len(followups) + 1}回目)")
         return {"title": rec.get("title") or "", "views": views, "root": root, "post_text": text, "entry": entry}
     return None
 
@@ -151,8 +175,8 @@ def _pick_same_topic(items: list[dict], buzz: dict):
 def angle_note(buzz: dict) -> str:
     return (f"【今回の作り方】この話題は、前回の投稿「{buzz['title']}」がよく見られました。"
             "同じ話題で、前回とは違う切り口（例：別の人物や立場から見る・背景や経緯・ファンや世間の反応・今後どうなるか・意外な豆知識）で1本作ってください。"
-            "前回と同じタイトル・同じ書き出し・同じ問いかけにしないこと。記事に無い事実は作らないこと。\n\n"
-            f"【前回の投稿】\n{buzz['post_text']}")
+            "これまでの投稿（下に全部あります）のどれとも同じタイトル・同じ書き出し・同じ問いかけ・同じ切り口にしないこと。記事に無い事実は作らないこと。\n\n"
+            f"【これまでの投稿】\n{buzz['post_text']}")
 
 
 def pick_buzz_candidate(items: list[dict], buzz: dict, extract_article_text, min_chars: int):
