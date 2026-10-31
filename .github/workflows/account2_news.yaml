@@ -12,7 +12,12 @@ on:
     - cron: "0 7 * * *"
     # 21:00 JST = 12:00 UTC
     - cron: "0 12 * * *"
-  workflow_dispatch: {}
+  # 10-31〜 手動で起動するときに force を true にすると、90分の二重投稿防止を飛ばす(ユーザーの臨時の投稿用)
+  workflow_dispatch:
+    inputs:
+      force:
+        type: boolean
+        default: false
 
 concurrency:
   group: account2-news
@@ -67,6 +72,8 @@ jobs:
       # 二重投稿しないよう、直近90分以内に投稿していれば今回は何もしない
       - name: Skip if posted within 90 minutes
         id: guard
+        env:
+          FORCE: ${{ inputs.force }}
         run: |
           python - <<'EOF'
           import json, os, datetime, yaml
@@ -78,7 +85,7 @@ jobs:
               last = datetime.datetime.fromisoformat(json.loads(lines[-1])["posted_at"])
               minutes = (datetime.datetime.now(datetime.timezone.utc) - last).total_seconds() / 60
               print(f"last post {minutes:.0f} minutes ago")
-              skip = minutes < 90
+              skip = minutes < 90 and os.environ.get("FORCE") != "true"
           except Exception as e:
               print(f"guard check failed, continue: {e}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
