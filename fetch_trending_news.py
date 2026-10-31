@@ -388,6 +388,15 @@ def main():
     if next_topic.exists():
         from buzz_followup import angle_note
         want = json.loads(next_topic.read_text(encoding="utf-8"))
+        # 10-31〜 前の投稿の続きではない、新しいネタの指定(source なし)。記事本文をそのまま使う
+        if not want.get("source"):
+            result = {"keyword": want["keyword"], "article_url": want.get("article_url", ""), "article_source": "",
+                      "article_text": want["article_text"]}
+            with open(Path(config["output_dir"]) / "trend_candidate.json", "w", encoding="utf-8") as f:
+                json.dump(result, f, ensure_ascii=False, indent=2)
+            next_topic.unlink()
+            print(f"採用(ユーザー指定の1回だけのネタ): {want['keyword']}")
+            return
         # 前に同じネタで作った投稿が複数あるときは、全部を「前回の投稿」として渡す(どれとも違う切り口にするため)
         sources = [want["source"]] + want.get("also_sources", [])
         post_text = "\n\n----------\n\n".join(Path(s).read_text(encoding="utf-8") for s in sources if Path(s).exists())
