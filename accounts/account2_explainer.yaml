@@ -57,3 +57,4 @@ monitor_platform: "tiktok"  # 監視用: tiktok または threads
 monitor_max_interval_hours: 8  # これ以上投稿間隔が空いたら異常とみなす
 monitor_recovery_workflow: "account2_news.yaml"  # 停滞検知時に自動再実行するワークフロー
 x_trends: true   # 11-01〜 X の日本のトレンドとも比べて、バズりやすいほうを使う(x_trends.py。ユーザー「全ての回で」)
+x_force_until: "2026-11-02"   # 11-02 ユーザー「今日1日は全てXネタに」。この日(日本時間)までは必ず X のトレンドから(バズの再利用も休む)

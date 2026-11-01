@@ -434,8 +434,14 @@ def main():
             if dropped:
                 print(f"  決めた言葉で外した記事: {len(dropped)}件(例: {dropped[:3]})")
         print(f"{len(all_items)}件の記事を取得しました。ジャンルに合うものを選びます...")
+        # 11-02 ユーザー「今日1日は全てXネタに」: 設定 x_force_until(日本の日付)まで、バズの再利用を休んで必ず X のトレンドから選ぶ
+        import datetime as _dt
+        jst_today = (_dt.datetime.utcnow() + _dt.timedelta(hours=9)).date().isoformat()
+        x_force = os.environ.get("X_FORCE") == "1" or jst_today <= str(config.get("x_force_until") or "")
+        if x_force:
+            print(f"今日({jst_today})は X のトレンドから選びます(x_force_until={config.get('x_force_until')})")
         # 10-25〜 2日前までの投稿にバズったものがあれば、同じネタを別の切り口で(buzz_followup.py)
-        if config.get("buzz_followup"):
+        if config.get("buzz_followup") and not x_force:
             try:
                 from buzz_followup import find_buzz, pick_buzz_candidate
                 buzz = find_buzz(config)
@@ -466,12 +472,12 @@ def main():
             print(f"  - {item['keyword']}")
         source_type = "topic"
         # 11-01〜 X の日本のトレンドとも比べて、話題性の高いほうを使う(x_trends.py)。失敗したらいつもどおりニュース記事
-        if config.get("x_trends") or os.environ.get("X_FORCE") == "1":
+        if config.get("x_trends") or x_force:
             try:
                 from x_trends import try_x_candidate
                 recent = load_recent_post_titles(config["titles_log_file"], hours=48)
                 result = try_x_candidate(trend_items, recent, recent_keywords, topic,
-                                         force_x=os.environ.get("X_FORCE") == "1")
+                                         force_x=x_force)
                 if result:
                     output_dir = Path(config["output_dir"])
                     output_dir.mkdir(parents=True, exist_ok=True)
