@@ -119,6 +119,7 @@ def validate_question_ending(text: str) -> tuple[bool, str]:
         "みなさん", "皆さん", "あなた", "みんなは", "みんなの",
         "な人", "た人", "する人", "派の人", "経験ある", "見た人", "行った人",
         "使った人", "知ってる人", "います？", "いますか", "どっち",
+        "許せる", "アリ？", "ナシ？", "派？",   # 11-01〜 二択の問いかけ
     ]
     if not any(marker in last_line for marker in reader_markers):
         return False, f"読者を名指しした疑問文になっていません(自分完結型の独り言の可能性): 「{last_line}」"

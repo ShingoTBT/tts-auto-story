@@ -117,6 +117,8 @@ jobs:
           # バズった投稿の確認用(再生数)
           ZERNIO_API_KEY: ${{ secrets.ZERNIO_API_KEY }}
           ZERNIO_TIKTOK_ACCOUNT_ID_2: ${{ secrets.ZERNIO_TIKTOK_ACCOUNT_ID_2 }}
+          # 11-01〜 X の日本のトレンド(x_trends.py)
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
         run: python fetch_trending_news.py ${{ steps.pick.outputs.config }}
 
       - name: Generate news story
