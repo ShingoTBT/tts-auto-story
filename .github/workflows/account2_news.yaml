@@ -94,8 +94,11 @@ jobs:
 
       # 10-28〜 06:00・11:00 の回は「社会人なら知っておくべき最新ニュース」の解説(account2_explainer.yaml)、それ以外は芸能・スポーツ
       # 起動が遅れても、いま何時の枠の回か(01・06・11・16・21時のうち、今より前で一番近いもの)で決める
+      # 11-02〜 臨時の投稿(force)は時間に関係なく芸能・スポーツ(臨時の 8:00・13:00 が解説の枠に入らないように)
       - name: Pick config by time slot
         id: pick
+        env:
+          FORCE: ${{ inputs.force }}
         run: |
           python - <<'EOF2'
           import datetime, os
@@ -103,6 +106,8 @@ jobs:
           slots = [1, 6, 11, 16, 21]
           slot = max([h for h in slots if h <= now.hour], default=21)
           cfg = "accounts/account2_explainer.yaml" if slot in (6, 11) else "accounts/account2_news.yaml"
+          if os.environ.get("FORCE") == "true":
+              cfg = "accounts/account2_news.yaml"
           print(f"now {now:%H:%M} JST → slot {slot}:00 → {cfg}")
           with open(os.environ["GITHUB_OUTPUT"], "a") as f:
               print("config=" + cfg, file=f)
