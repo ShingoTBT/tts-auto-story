@@ -12,6 +12,7 @@ Googleトレンドの急上昇ワードRSSを取得し、
     { "keyword": "...", "article_url": "...", "article_text": "...", "source": "..." }
 """
 
+import os
 import sys
 import re
 import json
@@ -464,6 +465,22 @@ def main():
         for item in trend_items[:MAX_CANDIDATES_TO_CHECK]:
             print(f"  - {item['keyword']}")
         source_type = "topic"
+        # 11-01〜 X の日本のトレンドとも比べて、話題性の高いほうを使う(x_trends.py)。失敗したらいつもどおりニュース記事
+        if config.get("x_trends") or os.environ.get("X_FORCE") == "1":
+            try:
+                from x_trends import try_x_candidate
+                recent = load_recent_post_titles(config["titles_log_file"], hours=48)
+                result = try_x_candidate(trend_items, recent, recent_keywords, topic,
+                                         force_x=os.environ.get("X_FORCE") == "1")
+                if result:
+                    output_dir = Path(config["output_dir"])
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    with open(output_dir / "trend_candidate.json", "w", encoding="utf-8") as f:
+                        json.dump(result, f, ensure_ascii=False, indent=2)
+                    print(f"採用(Xのトレンド): {result['keyword']}")
+                    return
+            except Exception as e:
+                print(f"  X のトレンドを使えませんでした(ニュース記事で続けます): {e}")
     elif use_google:
         print(f"今回はGoogleトレンドを使用します(google_trend_ratio={google_ratio})")
         print("Googleトレンドを取得中...")

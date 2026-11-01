@@ -1,0 +1,32 @@
+name: x_trend_sample
+
+# 11-01〜 X のトレンドからニュースの見本を1本作るだけ(投稿しない・記録も残さない)。確認用に手動で起動する
+on:
+  workflow_dispatch: {}
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Fetch candidate (X のトレンドを優先)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          X_FORCE: "1"
+        run: |
+          python x_trends.py accounts/account2_news.yaml
+          python fetch_trending_news.py accounts/account2_news.yaml
+      - name: Generate sample text
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python generate_news.py accounts/account2_news.yaml
+          echo "===== 見本 ====="
+          cat "$(ls -t outputs/account2_news/2*.txt | head -1)"

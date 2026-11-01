@@ -49,6 +49,9 @@ def build_user_message(candidate: dict, recent_titles: list[str]) -> str:
         f"【トレンドキーワード】\n{candidate['keyword']}\n\n"
         f"【元記事本文】\n{candidate['article_text']}"
     )
+    if candidate.get("x_note"):
+        # 11-01〜 X のトレンドがネタのとき(x_trends.py)。投稿の文を使わない・個人を特定しない・「SNSで話題」と書く
+        base += "\n\n" + candidate["x_note"]
 
     if candidate.get("angle_note"):
         # 10-25〜 バズったネタを別の切り口で(buzz_followup.py)。同じ話題なのはわざとなので、タイトルだけ重ねない
