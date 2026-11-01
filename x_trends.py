@@ -43,6 +43,10 @@ def _headers():
 def fetch_trends() -> list[dict]:
     """日本のトレンド。[{name, count}]"""
     r = requests.get(f"{X_API}/trends/by/woeid/{JAPAN_WOEID}", headers=_headers(), timeout=30)
+    if not r.ok:
+        tok = os.environ.get("X_BEARER_TOKEN", "").strip()
+        # 合鍵そのものは出さない。形だけ(長さ・先頭が AAAA か)を出して、貼り間違いを見分ける
+        print(f"  X API エラー {r.status_code}: {r.text[:300]} (合鍵の長さ {len(tok)}・先頭AAAA {tok.startswith('AAAA')})")
     r.raise_for_status()
     out = []
     for t in r.json().get("data", []):
