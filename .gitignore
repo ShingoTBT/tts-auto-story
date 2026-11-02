@@ -5,3 +5,6 @@ __pycache__/
 outputs/*/videos/**/*.mp4
 outputs/*/videos/**/*.png
 outputs/*/videos/**/*.wav
+
+# 11-02〜 ワークフローが保存する ffmpeg(actions/cache)
+ffmpeg-bin/

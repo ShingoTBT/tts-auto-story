@@ -54,36 +54,50 @@ jobs:
           done
           ls -la fonts
 
+      # 11-02〜 ffmpeg の入っていない実行環境に当たり、ダウンロードも失敗して定刻の回が止まることがあった(11-01 に3回など)。
+      # 一度取ってきた ffmpeg を保存しておき、無いときは 配布元2か所 → apt の順に試す
+      - name: Cache ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: ffmpeg-bin
+          key: ffmpeg-static-v1
+
       - name: Check ffmpeg
         run: |
-          if ! command -v ffmpeg >/dev/null; then
-            curl -fsSL --retry 3 -o /tmp/ff.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-            tar -xf /tmp/ff.tar.xz -C /tmp
-            sudo cp /tmp/ffmpeg-*-static/ffmpeg /tmp/ffmpeg-*-static/ffprobe /usr/local/bin/
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            if [ ! -x ffmpeg-bin/ffmpeg ] || [ ! -x ffmpeg-bin/ffprobe ]; then
+              rm -rf ffmpeg-bin /tmp/ffx && mkdir -p ffmpeg-bin /tmp/ffx
+              if curl -fsSL --retry 5 --retry-all-errors --max-time 300 -o /tmp/ff.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
+                 && tar -xf /tmp/ff.tar.xz -C /tmp/ffx; then
+                echo "ffmpeg from johnvansickle.com"
+              elif curl -fsSL --retry 5 --retry-all-errors --max-time 300 -o /tmp/ff.tar.xz https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz \
+                 && tar -xf /tmp/ff.tar.xz -C /tmp/ffx; then
+                echo "ffmpeg from BtbN/FFmpeg-Builds"
+              fi
+              find /tmp/ffx -type f \( -name ffmpeg -o -name ffprobe \) -exec cp {} ffmpeg-bin/ \;
+              if [ ! -x ffmpeg-bin/ffmpeg ] || [ ! -x ffmpeg-bin/ffprobe ]; then
+                rm -rf ffmpeg-bin
+                echo "ffmpeg from apt"
+                sudo timeout 300 apt-get update -qq && sudo timeout 300 apt-get install -y -qq ffmpeg
+              fi
+            fi
+            if [ -x ffmpeg-bin/ffmpeg ]; then
+              sudo cp ffmpeg-bin/ffmpeg ffmpeg-bin/ffprobe /usr/local/bin/
+            fi
           fi
           ffmpeg -version | head -1
+          ffprobe -version | head -1
 
       # 2026-10-23〜 Xserver から決まった時刻に起動する(GitHub の定時起動は遅れ・飛ばしがあるので予備)。
       # 二重投稿しないよう、直近90分以内に投稿していれば今回は何もしない
+      # 11-02〜 予備の定時起動は1〜4時間遅れて届き余分な投稿になっていたため、自分の枠がもう投稿済み・次の枠まで90分を切っていれば何もしない(schedule_guard.py)
       - name: Skip if posted within 90 minutes
         id: guard
-        run: |
-          python - <<'EOF'
-          import json, os, datetime, yaml
-          cfg = yaml.safe_load(open("accounts/account5_tiktok_engagement.yaml", encoding="utf-8"))
-          skip = False
-          try:
-              # 10-24 投稿に失敗した回でも止まらないよう、投稿できた時刻(posted_videos.jsonl)で見る
-              lines = [l for l in open(cfg["output_dir"] + "/posted_videos.jsonl", encoding="utf-8") if l.strip()]
-              last = datetime.datetime.fromisoformat(json.loads(lines[-1])["posted_at"])
-              minutes = (datetime.datetime.now(datetime.timezone.utc) - last).total_seconds() / 60
-              print(f"last post {minutes:.0f} minutes ago")
-              skip = minutes < 90
-          except Exception as e:
-              print(f"guard check failed, continue: {e}")
-          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
-              print("skip=" + ("true" if skip else "false"), file=f)
-          EOF
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: python schedule_guard.py accounts/account5_tiktok_engagement.yaml 1,6,11,16,21
 
       - name: Generate post
         id: generate
