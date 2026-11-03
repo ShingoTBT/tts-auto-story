@@ -377,6 +377,24 @@ def load_recent_post_titles(titles_log_file: str, hours: int = 48) -> list[str]:
     return titles[-15:]
 
 
+def last_was_x(output_dir: str) -> bool:
+    """直前の投稿のネタが X のトレンドだったか(バズったネタの再利用の回は飛ばして見る)。記録が無ければ False"""
+    path = Path(output_dir) / "news_candidates.jsonl"
+    if not path.exists():
+        return False
+    rows = []
+    for line in open(path, encoding="utf-8"):
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            continue
+    for r in reversed(rows):
+        if r.get("buzz_root"):
+            continue
+        return r.get("article_source") == "X トレンド"
+    return False
+
+
 def main():
     if len(sys.argv) < 2:
         print("使い方: python fetch_trending_news.py <account_config.yaml>")
@@ -440,6 +458,17 @@ def main():
         x_force = os.environ.get("X_FORCE") == "1" or jst_today <= str(config.get("x_force_until") or "")
         if x_force:
             print(f"今日({jst_today})は X のトレンドから選びます(x_force_until={config.get('x_force_until')})")
+        # 11-03 ユーザー「今日からは半々くらいに」: X のトレンドとニュース記事を交互に。
+        # 直前の回(バズったネタの再利用の回は数えない)が X なら今回はニュース記事、ニュースなら今回は必ず X
+        x_skip = False
+        if config.get("x_alternate") and not x_force:
+            last_x = last_was_x(config["output_dir"])
+            if last_x:
+                x_skip = True
+                print("交互: 前の回が X のトレンドだったので、今回はニュース記事から選びます")
+            else:
+                x_force = True
+                print("交互: 前の回がニュース記事だったので、今回は X のトレンドから選びます")
         # 10-25〜 2日前までの投稿にバズったものがあれば、同じネタを別の切り口で(buzz_followup.py)
         if config.get("buzz_followup"):
             try:
@@ -472,7 +501,7 @@ def main():
             print(f"  - {item['keyword']}")
         source_type = "topic"
         # 11-01〜 X の日本のトレンドとも比べて、話題性の高いほうを使う(x_trends.py)。失敗したらいつもどおりニュース記事
-        if config.get("x_trends") or x_force:
+        if (config.get("x_trends") or x_force) and not x_skip:
             try:
                 from x_trends import try_x_candidate
                 recent = load_recent_post_titles(config["titles_log_file"], hours=48)
