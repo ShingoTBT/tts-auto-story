@@ -129,8 +129,17 @@ def run_account(config_path):
 
 
 def main():
+    # 11-04 1つのアカウントで Zernio が一時的にエラーを返すと、残りのアカウントも止まって失敗メールになった。
+    # アカウントごとに続け、全部だめだったときだけ失敗にする(1時間後の次の回で取り戻せるため)
+    failed = []
     for config_path in sys.argv[1:]:
-        run_account(config_path)
+        try:
+            run_account(config_path)
+        except Exception as e:
+            print(f"[{config_path}] エラーで飛ばしました(次の回にやり直します): {type(e).__name__}: {e}")
+            failed.append(config_path)
+    if failed and len(failed) == len(sys.argv[1:]):
+        sys.exit(1)
 
 
 if __name__ == "__main__":
