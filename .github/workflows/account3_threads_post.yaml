@@ -17,7 +17,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      # 11-04 予備の定時起動と Xserver の起動が続けて来ると、後の回が起動した時点の古い main を読んで
+      # 二重投稿防止をすり抜けた(18:14・18:15 に2回投稿)。起動時点ではなく今の main を取る
       - uses: actions/checkout@v4
+        with:
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
