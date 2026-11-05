@@ -1,5 +1,5 @@
 # 依頼「ルートバズ」の TikTok アカウント「復縁専門占い師 メイ🔮」(@bakumote0。ユーザーの既存アカウント・2026-11-05 から運用)
-# 投稿はルートバズのチャットが行う。ここでは コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
+# 投稿はルートバズのチャットが行う。ここでは毎朝のレポート(combined_report.py --rootbuzz。2026-11-06 追加)と、コメントへのいいね・絵文字の返信(reply_comments_tiktok.py)に使う。
 account_name: "rootbuzz_mei"
 display_name: "復縁専門占い師 メイ"
 chatwork_label: "復縁専門占い師 メイ"
