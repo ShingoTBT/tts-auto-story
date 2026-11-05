@@ -77,7 +77,7 @@ def search_posts(name: str) -> list[str]:
     return [t for _, t in posts]
 
 
-def choose(news_items: list[dict], trends: list[dict], recent_posts: list[str], topic: str, force_x=False):
+def choose(news_items: list[dict], trends: list[dict], recent_posts: list[str], topic: str, force_x=False, extra_rules=None):
     """ニュースのいちばん良い候補(先頭数件)と X のトレンドを比べる。X を使うならトレンドの名前、ニュースなら None"""
     import anthropic
     from generate import claude_extra_params
@@ -102,7 +102,8 @@ def choose(news_items: list[dict], trends: list[dict], recent_posts: list[str], 
         "選手名・馬名・チーム名も、同じ時間のトレンドに大会名・レース名があるなど大きな試合・レースの話だと分かるならOK\n"
         "- 同じ出来事のトレンドが複数あるときは、大会名・レース名など何の話か一番分かるものを選ぶ（例: 馬名より「#天皇賞・秋」）\n"
         "- 直近の投稿と同じ人物・出来事ではない\n"
-        + ("今回は確認のため、条件を満たすトレンドがあれば必ずトレンドから選んでください。\n" if force_x else "")
+        + "".join(f"- {r}\n" for r in (extra_rules or []))   # 11-05〜 アカウント設定の x_pick_rules
+        + ("今回は、条件を満たすトレンドがあれば必ずトレンドから選んでください。\n" if force_x else "")
         + "回答は JSON 1つだけ: トレンドを選ぶなら {\"pick\": \"trend\", \"index\": 番号}、ニュース記事のほうがよければ {\"pick\": \"news\"}。説明は書かない。\n\n"
         f"【ニュース記事の候補（良い順）】\n{news}\n\n【SNSのトレンド】\n{trend_list}\n\n【直近の投稿】\n{recent}"
     )
@@ -132,13 +133,13 @@ def build_candidate(name: str) -> dict | None:
     }
 
 
-def try_x_candidate(news_items, recent_posts, recent_keywords, topic, force_x=False):
+def try_x_candidate(news_items, recent_posts, recent_keywords, topic, force_x=False, extra_rules=None):
     """X のトレンドのほうが良ければ trend_candidate を返す。ニュースのほうが良い・失敗したときは None"""
     trends = [t for t in fetch_trends() if t["name"] not in recent_keywords]
     print(f"X の日本のトレンド: {len(trends)}件(例: {[t['name'] for t in trends[:8]]})")
     if not trends:
         return None
-    name = choose(news_items, trends, recent_posts, topic, force_x)
+    name = choose(news_items, trends, recent_posts, topic, force_x, extra_rules)
     if not name:
         print("  → 今回はニュース記事のほうを使います")
         return None

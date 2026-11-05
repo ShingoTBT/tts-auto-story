@@ -461,6 +461,10 @@ def main():
         # 11-03 ユーザー「今日からは半々くらいに」: X のトレンドとニュース記事を交互に。
         # 直前の回(バズったネタの再利用の回は数えない)が X なら今回はニュース記事、ニュースなら今回は必ず X
         x_skip = False
+        # 11-05〜 解説の枠(6・11時)は X のトレンドを優先(ユーザー了承。X ネタの解説は 430〜550回で、ふだんの解説の約5倍だった)
+        if config.get("x_prefer") and not x_force:
+            x_force = True
+            print("X を優先する枠なので、条件に合う X のトレンドがあれば X から選びます")
         if config.get("x_alternate") and not x_force:
             last_x = last_was_x(config["output_dir"])
             if last_x:
@@ -506,7 +510,7 @@ def main():
                 from x_trends import try_x_candidate
                 recent = load_recent_post_titles(config["titles_log_file"], hours=48)
                 result = try_x_candidate(trend_items, recent, recent_keywords, topic,
-                                         force_x=x_force)
+                                         force_x=x_force, extra_rules=config.get("x_pick_rules"))
                 if result:
                     output_dir = Path(config["output_dir"])
                     output_dir.mkdir(parents=True, exist_ok=True)
