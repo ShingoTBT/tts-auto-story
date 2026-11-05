@@ -191,7 +191,7 @@ def schedule_line(api_key: str, account_id: str) -> tuple[str, bool]:
 def build_account_section(config_path: str, alerts: list | None = None) -> list[str]:
     config = load_account_config(config_path)
     label = config.get("chatwork_label", config.get("display_name"))
-    api_key = os.environ.get(config["zernio_api_key_env"])
+    api_key = (os.environ.get(config["zernio_api_key_env"]) or "").strip()
     # accountId は秘密ではないので設定ファイルに直接書いてもよい(書いてあればそちらを使う)
     account_id = config.get("zernio_account_id") or os.environ.get(config.get("zernio_account_id_env", ""))
 

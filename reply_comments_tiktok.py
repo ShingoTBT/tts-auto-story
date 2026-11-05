@@ -52,7 +52,7 @@ def pick_reply(comment, cfg):
 def run_account(config_path):
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     label = cfg.get("chatwork_label", cfg.get("display_name"))
-    key = os.environ.get(cfg.get("zernio_api_key_env", "ZERNIO_API_KEY"))
+    key = (os.environ.get(cfg.get("zernio_api_key_env", "ZERNIO_API_KEY")) or "").strip()  # 登録時に末尾の改行が入っても動くように（2026-11-06 メイで発生）
     acc = cfg.get("zernio_account_id") or os.environ.get(cfg.get("zernio_account_id_env", ""))
     if not key or not acc:
         print(f"[{label}] 合鍵かアカウントIDが無いので飛ばします")
