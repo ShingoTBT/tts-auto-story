@@ -66,7 +66,12 @@ def run_account(config_path):
             except Exception:
                 pass
 
-    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=DAYS)
+    # アカウント設定の days で、何日前までの投稿を見るか変えられる（メイ＝昔の投稿にも今コメントが付くので長く。2026-11-05）
+    days = int(cfg.get("days", DAYS))
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days)
+    # comments_since（日本時間の日付）より前に書かれたコメントには付けない（昔のコメントへの一斉返信を避ける）
+    c_since = cfg.get("comments_since")
+    c_since = datetime.datetime.fromisoformat(str(c_since)).replace(tzinfo=datetime.timezone(datetime.timedelta(hours=9))) if c_since else None
     st, data = call("GET", "analytics", key, params={"platform": "tiktok", "accountId": acc, "limit": 50})
     posts = []
     for p in data.get("posts", []):
@@ -88,7 +93,7 @@ def run_account(config_path):
         if p.get("id") and p["id"] not in known and when >= since and p.get("commentCount"):
             posts.append((when, p["id"], (p.get("content") or "")[:30]))
             known.add(p["id"])
-    print(f"[{label}] 直近{DAYS}日の投稿: {len(posts)}本")
+    print(f"[{label}] 直近{days}日の投稿: {len(posts)}本")
 
     count = 0
     for when, pid, title in sorted(posts, reverse=True):
@@ -100,6 +105,12 @@ def run_account(config_path):
             cid = c.get("id")
             if not cid or cid in done or (c.get("from") or {}).get("isOwner"):
                 continue
+            if c_since:
+                try:
+                    if datetime.datetime.fromisoformat((c.get("createdTime") or "").replace("Z", "+00:00")) < c_since:
+                        continue
+                except ValueError:
+                    pass
             if any((r.get("from") or {}).get("isOwner") for r in c.get("replies") or []):
                 done.add(cid)
                 continue   # すでに自分が返信している
