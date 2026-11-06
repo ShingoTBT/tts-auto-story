@@ -38,6 +38,15 @@ video:
   voicevox_name: "玄野武宏"
   voicevox_tempo: 1.56   # 10-25 元の速さの2割増し(ユーザー「2割で」)
   music_genres: ["POP", "ELECTRONIC", "DANCE_POP", "HIP_HOP/RAP", "EDM", "TROPICAL_HOUSE"]
+  outro:   # 11-06〜 最後のCTAの画面(黄色の背景に切り替え。ユーザー「毎回取り入れてテストしていきましょう」)
+    lines:
+      - "毎日話題になった"
+      - "ネタやニュースを投稿するので"
+      - "話題に困らないアカウント！"
+      - "よければフォローしてね"
+    say:
+      - "毎日話題になったネタやニュースを投稿するので、話題に困らないアカウント！"
+      - "よければフォローしてね！"
 notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
 schedule_jst:
   - "01:00"
