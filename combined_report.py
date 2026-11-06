@@ -16,7 +16,7 @@ from pathlib import Path
 import requests
 
 from report_followers import load_account_config, get_follower_count, get_follower_count_with_delta
-from rootbuzz_report import build_rootbuzz_report
+from rootbuzz_report import build_rootbuzz_alert, build_rootbuzz_report
 from check_and_reply_comments import (
     load_posted_threads,
     is_within_check_window,
@@ -268,9 +268,15 @@ def main():
     if rootbuzz_configs:
         # ルートバズのレポートで何かあっても、上の2つ(本来のレポート)には影響させない
         try:
-            rootbuzz_report = build_rootbuzz_report(rootbuzz_configs, timestamp_str)
+            alerts = []
+            rootbuzz_report = build_rootbuzz_report(rootbuzz_configs, timestamp_str, alerts)
             print(rootbuzz_report)
             send_chatwork_message(cw_token, cw_room, rootbuzz_report)
+            # 予約切れの知らせは、レポートとは別のメッセージで TO 付きで送る(2026-11-06 ユーザー希望)
+            if alerts:
+                alert = build_rootbuzz_alert(alerts)
+                print(alert)
+                send_chatwork_message(cw_token, cw_room, alert)
         except Exception as e:
             print(f"エラー(ルートバズレポート): {e}")
 

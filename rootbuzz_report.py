@@ -228,7 +228,8 @@ def build_account_section(config_path: str, alerts: list | None = None) -> list[
     return body
 
 
-def build_rootbuzz_report(config_paths: list[str], timestamp_str: str) -> str:
+def build_rootbuzz_report(config_paths: list[str], timestamp_str: str, alerts_out: list | None = None) -> str:
+    """alerts_out を渡すと、予約切れの知らせはレポートに入れず alerts_out に入れる(別のメッセージで送るため。2026-11-06 ユーザー「別途TO付きで」)"""
     alerts = []
     sections = []
     for i, config_path in enumerate(config_paths):
@@ -240,7 +241,9 @@ def build_rootbuzz_report(config_paths: list[str], timestamp_str: str) -> str:
         f"{timestamp_str}現在",
     ]
     # 最終予約日の前日になっても次が予約されていなければ、TO で知らせる
-    if alerts:
+    if alerts_out is not None:
+        alerts_out.extend(alerts)
+    elif alerts:
         body.append("[To:237628] ⚠️ 予約がもうすぐ切れます（ルートバズのチャットで次の投稿を作って予約してください）")
         body.extend(f"・{a}" for a in alerts)
         body.append("")
@@ -249,3 +252,9 @@ def build_rootbuzz_report(config_paths: list[str], timestamp_str: str) -> str:
     body.append("※動画の詳しい数字は、TikTokの集計に投稿から1〜2日かかります")
     body.append("＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝")
     return "\n".join(body)
+
+
+def build_rootbuzz_alert(alerts: list[str]) -> str:
+    """予約切れの知らせ(レポートとは別のメッセージ・TO付き。2026-11-06 ユーザー「別途TO付きで」)"""
+    return "\n".join(["[To:237628] ⚠️ ルートバズの予約がもうすぐ切れます"] + [f"・{a}" for a in alerts]
+                     + ["ルートバズのチャットで、次の投稿を作って予約してください"])
