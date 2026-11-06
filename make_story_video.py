@@ -803,7 +803,83 @@ class Painter:
         return layer
 
 
-def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", credit=None, sfx=True):
+    # ---- 最後のCTAの画面(11-06〜 ユーザー案。ニュースの続きに見えないよう、背景を明るい黄色に切り替える) ----
+    def _outro_base(self):
+        if not hasattr(self, "_obase"):
+            top, bot = np.array((255, 228, 92)), np.array((255, 178, 64))
+            y = self.yy[..., None]
+            img = top + (bot - top) * y
+            self._obase = Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).convert("RGBA")
+            sans = find_sans()
+            self._of = {}
+            for k, size, wt in (("line", 62, 800), ("big", 70, 900), ("btn", 60, 900), ("small", 40, 700)):
+                f = ImageFont.truetype(sans, size)
+                try:
+                    f.set_variation_by_axes([wt])
+                except Exception:
+                    pass
+                self._of[k] = f
+        return self._obase
+
+    def outro(self, t, lines, appear_at, btn_at):
+        """CTAの画面。t は CTA が始まってからの秒。lines は最後の1つがボタン(フォローのお願い)"""
+        img = self._outro_base().copy()
+        # 斜めの白い帯がうっすら、ゆっくり流れる(止まった画面に見えないように)
+        stripes = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(stripes)
+        for k in range(-3, 9):
+            x = (k * 260 + t * 60) % (W + 1040) - 520
+            sd.polygon([(x, 0), (x + 90, 0), (x + 90 - 700, H), (x - 700, H)], fill=(255, 255, 255, 40))
+        img.alpha_composite(stripes)
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        d = ImageDraw.Draw(layer)
+        navy, red = (20, 30, 60), (230, 40, 60)
+        body, last = lines[:-1], lines[-1]
+        y = 560
+        for i, text in enumerate(body):
+            a = max(0.0, min(1.0, (t - appear_at[i]) / 0.35))
+            if a <= 0:
+                y += 120
+                continue
+            big = i == len(body) - 1
+            f = self._of["big" if big else "line"]
+            tw = d.textlength(text, font=f)
+            dy = (1 - a) * 30
+            if big:   # 決めの一言: 白いマーカーの帯の上に赤い字
+                d.rounded_rectangle([(W - tw) / 2 - 36, y + dy - 6, (W + tw) / 2 + 36, y + dy + 100], radius=24,
+                                    fill=(255, 255, 255, int(235 * a)))
+                d.text(((W - tw) / 2, y + dy + 4), text, font=f, fill=red + (int(255 * a),))
+                y += 170
+            else:
+                d.text(((W - tw) / 2, y + dy), text, font=f, fill=navy + (int(255 * a),))
+                y += 110
+        # フォローのボタン: ポンと出て、そのあと脈打つ
+        if t >= btn_at:
+            bt = t - btn_at
+            pop = 0.4 + 0.75 * min(1, bt / 0.15) if bt < 0.15 else (1.15 - 0.15 * min(1, (bt - 0.15) / 0.15))
+            scale = pop if bt < 0.3 else 1 + 0.04 * math.sin((bt - 0.3) * 6)
+            f = self._of["btn"]
+            label = "＋ " + last
+            tw = d.textlength(label, font=f)
+            bw, bh = (tw + 110) * scale, 140 * scale
+            x0, y0 = (W - bw) / 2, y + 120 + (150 - bh) / 2
+            d.rounded_rectangle([x0 + 8, y0 + 12, x0 + bw + 8, y0 + bh + 12], radius=75, fill=(150, 30, 40, 110))
+            d.rounded_rectangle([x0, y0, x0 + bw, y0 + bh], radius=75 * scale, fill=red + (255,))
+            if scale != 1:
+                fs = ImageFont.truetype(find_sans(), max(10, int(60 * scale)))
+                try:
+                    fs.set_variation_by_axes([900])
+                except Exception:
+                    pass
+            else:
+                fs = f
+            lw = d.textlength(label, font=fs)
+            d.text(((W - lw) / 2, y0 + (bh - 60 * scale) / 2 - 8 * scale), label, font=fs, fill=(255, 255, 255, 255))
+        img.alpha_composite(layer)
+        return img
+
+
+def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", credit=None, sfx=True, outro=None):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     work = Path(os.environ.get("LOCALAPPDATA", "/tmp")) / "story_video_work"
@@ -849,6 +925,35 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
             pieces.append((pi, si, t, t + len(a) / SR))
             audio.append(a)
             t += len(a) / SR
+    # 最後のCTA(outro: {lines: [...], say: [読み上げる文, ...]})。最後の文を読み終えてから画面を切り替える
+    outro_t0 = None
+    outro_appear, outro_btn = [], 0
+    if outro:
+        audio.append(np.zeros(int(SR * 0.9), np.float32))
+        t += 0.9
+        outro_t0 = t - 0.35
+        lines = outro["lines"]
+        say = outro.get("say") or ["".join(lines[:-1]), lines[-1]]
+        starts = []
+        for k, text in enumerate(say):
+            if k:
+                audio.append(np.zeros(int(SR * 0.25), np.float32))
+                t += 0.25
+            p = work / f"outro{k}.wav"
+            say_line(engine, text, voice, tempo, cache, p, log)
+            a = read_wav(p)
+            starts.append((t, t + len(a) / SR))
+            audio.append(a)
+            t += len(a) / SR
+        # 1つ目の読み上げの間に、本文の行を文字数の割合で順に出す。ボタンは2つ目の読み上げに合わせる
+        body = lines[:-1]
+        s0, e0 = starts[0]
+        tot = sum(len(x) for x in body) or 1
+        acc = 0
+        for x in body:
+            outro_appear.append(s0 + (e0 - s0) * acc / tot - 0.1 - outro_t0)
+            acc += len(x)
+        outro_btn = (starts[-1][0] if len(starts) > 1 else e0) - 0.1 - outro_t0
     audio.append(np.zeros(int(SR * TAIL), np.float32))
     total = t + TAIL
     voice_all = np.concatenate(audio)
@@ -876,6 +981,9 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
                 events.append((st - 0.12, (f, db)))
             elif plan["line"]:
                 events.append((st - 0.15, plan["line"]))
+        if outro_t0 is not None:   # CTA に切り替わる音と、フォローのボタンが出る音
+            events.append((outro_t0 - 0.1, ("swipe.mp3", -10)))
+            events.append((outro_t0 + outro_btn, ("kira.mp3", -8)))
         for at, item in events:
             if not item:
                 continue
@@ -924,6 +1032,16 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
                 fade_page = max(0.0, min(1.0, (nxt[0][2] - 0.15 - tt) / 0.5))
             layer = painter.text_block(title, pages[pi], si, appear, fade_page, is_last_page=(pi == len(pages) - 1), t=tt)
         frame.alpha_composite(layer)
+        if outro_t0 is not None and tt >= outro_t0:
+            # 黄色の画面が右からサッと入ってくる
+            ot = tt - outro_t0
+            card = painter.outro(ot, outro["lines"], outro_appear, outro_btn)
+            k = min(1.0, ot / 0.28)
+            x = int(W * (1 - (1 - (1 - k) ** 3)))
+            if x <= 0:
+                frame = card
+            else:
+                frame.alpha_composite(card.crop((0, 0, W - x, H)), (x, 0))
         # 最後に全体を暗くして終える
         if tt > total - 1.2:
             k = (tt - (total - 1.2)) / 1.2
@@ -973,7 +1091,7 @@ def build_for_account(config_path, story_txt, out_dir):
             reasons.append(f"ElevenLabs の残りが足りない(残り{rem[0]}字・必要{need}字)")
         else:
             try:
-                build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"])
+                build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"], outro=cfg.get("outro"))
                 engine = "elevenlabs"
             except ElevenLabsError as e:
                 reasons.append(f"ElevenLabs のエラー: {e}")
@@ -992,7 +1110,7 @@ def build_for_account(config_path, story_txt, out_dir):
                 chatwork_alert(f"[info][title]⚠️Google 読み上げの使用が多めです[/title]今月の使用：{used:,}字／無料枠 {GOOGLE_FREE_CHARS:,}字（{used / GOOGLE_FREE_CHARS:.0%}）\n"
                                f"{GOOGLE_STOP_RATIO:.0%}に達すると自動で止めて VOICEVOX にします。ふつうは月15%前後です。[/info]")
             try:
-                build(story_txt, out_dir, cfg["google_voice"], cfg.get("google_rate", 1.0), cfg["theme"], engine="google")
+                build(story_txt, out_dir, cfg["google_voice"], cfg.get("google_rate", 1.0), cfg["theme"], engine="google", outro=cfg.get("outro"))
                 engine = "google"
             except GoogleTTSError as e:
                 reasons.append(f"Google のエラー: {e}")
@@ -1005,7 +1123,7 @@ def build_for_account(config_path, story_txt, out_dir):
     # 3) VOICEVOX(無料・いつでも使える)
     if engine is None:
         build(story_txt, out_dir, str(cfg["voicevox_speaker"]), cfg.get("voicevox_tempo", 1.0), cfg["theme"],
-              engine="voicevox", credit=f"VOICEVOX:{cfg['voicevox_name']}")
+              engine="voicevox", credit=f"VOICEVOX:{cfg['voicevox_name']}", outro=cfg.get("outro"))
         engine = "voicevox"
 
     names = {"google": "Google", "elevenlabs": "ElevenLabs", "voicevox": "VOICEVOX"}
@@ -1032,13 +1150,18 @@ def main():
     ap.add_argument("--engine", default="elevenlabs", choices=["elevenlabs", "voicevox", "google"])
     ap.add_argument("--no-sfx", action="store_true", help="効果音を入れない")
     ap.add_argument("--credit", default=None, help="画面の右下に出す表記(VOICEVOX は「VOICEVOX:キャラ名」が必要)")
+    ap.add_argument("--outro", default=None, help="見本用: 最後のCTAの画面(yaml の video.outro と同じ形)を書いた yaml")
     a = ap.parse_args()
     if not shutil.which("ffmpeg"):
         raise SystemExit("ffmpeg がありません")
     if a.config:
         build_for_account(a.config, a.story_txt, a.out_dir)
         return
-    build(a.story_txt, a.out_dir, a.voice, a.tempo, a.theme, a.engine, a.credit, not a.no_sfx)
+    outro = None
+    if a.outro:
+        import yaml
+        outro = yaml.safe_load(Path(a.outro).read_text(encoding="utf-8"))
+    build(a.story_txt, a.out_dir, a.voice, a.tempo, a.theme, a.engine, a.credit, not a.no_sfx, outro)
 
 
 if __name__ == "__main__":
