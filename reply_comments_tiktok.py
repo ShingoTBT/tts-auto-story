@@ -60,13 +60,19 @@ def run_account(config_path):
         print(f"[{label}] 合鍵かアカウントIDが無いので飛ばします")
         return
     log = Path(cfg.get("output_dir") or f"outputs/{cfg['account_name']}") / "comment_replies.jsonl"
-    done = set()
+    # 返信を送った記録（コメントごとに送った時刻の一覧）。
+    # 2026-11-07 メイで、送信は成功（200）と返ったのに返信が付いていないことが2件あった
+    # → 記録があっても自分の返信が見当たらなければ、50分以上たってから送り直す（3回まで）
+    tries = {}
     if log.exists():
         for line in log.read_text(encoding="utf-8").splitlines():
             try:
-                done.add(json.loads(line)["comment_id"])
+                d = json.loads(line)
+                tries.setdefault(d["comment_id"], []).append(datetime.datetime.fromisoformat(d["at"]))
             except Exception:
                 pass
+    done = set(tries)
+    now = datetime.datetime.now(datetime.timezone.utc)
 
     # アカウント設定の days で、何日前までの投稿を見るか変えられる（メイ＝昔の投稿にも今コメントが付くので長く。2026-11-05）
     days = int(cfg.get("days", DAYS))
@@ -105,7 +111,7 @@ def run_account(config_path):
             continue
         for c in data.get("comments", []):
             cid = c.get("id")
-            if not cid or cid in done or (c.get("from") or {}).get("isOwner"):
+            if not cid or (c.get("from") or {}).get("isOwner"):
                 continue
             if c_since:
                 try:
@@ -116,6 +122,13 @@ def run_account(config_path):
             if any((r.get("from") or {}).get("isOwner") for r in c.get("replies") or []):
                 done.add(cid)
                 continue   # すでに自分が返信している
+            retry = 0
+            if cid in done:
+                t = tries.get(cid) or []
+                if not t or len(t) >= 3 or now - max(t) < datetime.timedelta(minutes=50):
+                    continue
+                retry = len(t)
+                print(f"  {cid}: 前の返信が付いていないので送り直します（{retry}回目）")
             if count >= MAX_PER_RUN:
                 print(f"  1回の上限({MAX_PER_RUN}件)に達したので、残りは次の回に")
                 return
@@ -126,7 +139,7 @@ def run_account(config_path):
             emoji = pick_reply(c, cfg)
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
             r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
-                              headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}"},
+                              headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
                               json={"accountId": acc, "message": emoji, "commentId": cid})
             ok = r.status_code == 200
             print(f"  {title!r} のコメント {cid}: いいね{'○' if liked else '×'} 返信{emoji}{'○' if ok else '×'}")
@@ -134,7 +147,7 @@ def run_account(config_path):
                 log.parent.mkdir(parents=True, exist_ok=True)
                 with open(log, "a", encoding="utf-8") as f:
                     f.write(json.dumps({"at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(timespec="seconds"),
-                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked)}, ensure_ascii=False) + "\n")
+                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked), **({"retry": retry} if retry else {})}, ensure_ascii=False) + "\n")
                 done.add(cid)
                 count += 1
             time.sleep(random.uniform(3, 8))
