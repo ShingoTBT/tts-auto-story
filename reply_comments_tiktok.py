@@ -45,8 +45,10 @@ def pick_reply(comment, cfg):
     text = comment.get("text") or comment.get("message") or ""
     for rule in cfg.get("reply_rules") or []:
         if any(w in text for w in rule.get("match", [])):
-            return rule["reply"]
-    return random.choice(EMOJIS)
+            r = rule["reply"]
+            return random.choice(r) if isinstance(r, list) else r
+    # アカウント設定の emojis があれば、その中からランダム（2026-11-06 メイ＝ハート系）
+    return random.choice(cfg.get("emojis") or EMOJIS)
 
 
 def run_account(config_path):
