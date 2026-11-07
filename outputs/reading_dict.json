@@ -1,0 +1,79 @@
+{
+ "AKB48": {
+  "reading": "エーケービーフォーティーエイト",
+  "kind": "グループ名",
+  "confirmed": true,
+  "source": "ORICON・Wikipedia",
+  "replace": true
+ },
+ "SNS": {
+  "reading": "エスエヌエス",
+  "kind": "略語",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": true
+ },
+ "こじはる": {
+  "reading": "こじはる",
+  "kind": "人名（愛称）",
+  "confirmed": true,
+  "source": "Wikipedia・ORICON（愛称）",
+  "replace": true
+ },
+ "まじか": {
+  "reading": "まじか",
+  "kind": "ネットの言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ },
+ "やばい": {
+  "reading": "やばい",
+  "kind": "ネットの言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ },
+ "トレンド入り": {
+  "reading": "トレンドいり",
+  "kind": "ネットの言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": true
+ },
+ "マジで": {
+  "reading": "マジで",
+  "kind": "ネットの言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ },
+ "小嶋陽菜": {
+  "reading": "こじまはるな",
+  "kind": "人名",
+  "confirmed": true,
+  "source": "Wikipedia・ORICON・映画.com",
+  "replace": true
+ },
+ "熱量": {
+  "reading": "ねつりょう",
+  "kind": "言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ },
+ "結婚してたんや": {
+  "reading": "けっこんしてたんや",
+  "kind": "言葉（関西弁）",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ },
+ "続報": {
+  "reading": "ぞくほう",
+  "kind": "言葉",
+  "confirmed": true,
+  "source": "一般的な読み方",
+  "replace": false
+ }
+}

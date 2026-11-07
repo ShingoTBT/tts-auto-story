@@ -1,7 +1,24 @@
-  File "/home/runner/work/tts-auto-story/tts-auto-story/make_story_video.py", line 913
-    print("
-          ^
-SyntaxError: unterminated string literal (detected at line 913)
-exit 1
+  読み方の確認:
+    （AI が読み方を確認。ウェブ検索 4 回）
+    結婚してたんや：けっこんしてたんや　言葉（関西弁）　一般的な読み方　（そのまま）
+    トレンド入り：トレンドいり　ネットの言葉　一般的な読み方　→ 声はこの読みで
+    AKB48：エーケービーフォーティーエイト　グループ名　ORICON・Wikipedia　→ 声はこの読みで
+    こじはる：こじはる　人名（愛称）　Wikipedia・ORICON（愛称）　（そのまま）
+    小嶋陽菜：こじまはるな　人名　Wikipedia・ORICON・映画.com　→ 声はこの読みで
+    SNS：エスエヌエス　略語　一般的な読み方　→ 声はこの読みで
+    まじか：まじか　ネットの言葉　一般的な読み方　（そのまま）
+    マジで：マジで　ネットの言葉　一般的な読み方　（そのまま）
+    やばい：やばい　ネットの言葉　一般的な読み方　（そのまま）
+    熱量：ねつりょう　言葉　一般的な読み方　（そのまま）
+    続報：ぞくほう　言葉　一般的な読み方　（そのまま）
+  内容に合わせた効果音: キラリン → 「まじか！」「おめでとう！」と驚きと祝福の声がマジで溢れていて、トレンド入りするほどの盛り上がりに。
+  0/48秒
+  10/48秒
+  20/48秒
+  30/48秒
+  40/48秒
+完成: preview_out/完成.mp4（48.4秒）
+声: ElevenLabs pUgmTF2V1ptIKsYb6qON 
+exit 0
 Name: anthropic
 Version: 2.6.0
