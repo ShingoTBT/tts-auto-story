@@ -910,8 +910,7 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
         pairs, notes = rc.check([title] + [x for pg in pages for x in pg] + list((outro or {}).get("say") or []))
         EXTRA_READ[:] = pairs
         log += ["【固有名詞などの読み方の確認】"] + notes + [""]
-        print("
-".join(["  読み方の確認:"] + [f"    {n}" for n in notes]))
+        print(chr(10).join(["  読み方の確認:"] + [f"    {n}" for n in notes]))
 
     # 1) 声: 題名 → 各文。並べて1本の音声にし、各文の開始時刻を記録する
     if engine == "voicevox":
