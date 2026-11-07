@@ -27,6 +27,7 @@ output_dir: "outputs/account2_news"
 # 2026-10-23〜 動画で投稿(ナレーション付き。make_story_video.py / post_video_to_tiktok.py)
 # 声は ElevenLabs、今月の残りが足りない・エラーのときは VOICEVOX(無料)。どちらを使ったかは毎朝のレポートに出る
 video:
+  reading_check: true   # 11-07 人名・地名・チーム名・流行りの言葉などの読み方を AI がネットで確かめてから読む（小嶋陽菜を「こじまひな」と読んだため）
   # 声の順番: ElevenLabs → Google(Chirp 3 HD・毎月100万字まで無料)→ VOICEVOX。2026-10-23〜(ユーザー希望)
   google_voice: "Zubenelgenubi"              # ja-JP-Chirp3-HD-Zubenelgenubi(男性・くだけた話し方)。10-30 Puck から変更(ユーザーが聞き比べて選択)
   google_rate: 1.44   # 10-25 元の速さの2割増し(ユーザー「2割で」)
@@ -47,6 +48,10 @@ video:
     say:
       - "毎日話題になったネタやニュースを投稿するので、話題に困らないアカウント！"
       - "よければフォローしてね！"
+      - "「これ詳しく解説して！」みたいなリクエストも、コメントでお気軽に！"
+    note:   # 11-06〜 ボタンの下の吹き出し(ユーザー案・声でも読む)
+      - "「これ詳しく解説して！」みたいな"
+      - "リクエストもコメントでお気軽に！"
 notify_webhook_env: "SLACK_WEBHOOK_ACCOUNT2"
 schedule_jst:
   - "01:00"

@@ -159,8 +159,12 @@ def _ja_big_number(m):
 _BIG_NUMBER_RE = re.compile(r"(?<![A-Za-z0-9.,])(?:\d{1,3}(?:,\d{3})+|\d{5,})(?![A-Za-z0-9.]|,\d)")
 
 
+# 動画ごとに AI がネットで確かめた固有名詞などの読み方(reading_check.py。2026-11-07〜 小嶋陽菜を「こじまひな」と読んだため)
+EXTRA_READ = []
+
+
 def to_reading(text):
-    for a, b in READ:
+    for a, b in EXTRA_READ + READ:
         text = text.replace(a, b)
     return _BIG_NUMBER_RE.sub(_ja_big_number, text)
 
@@ -168,7 +172,7 @@ def to_reading(text):
 def _norm(s):
     s = _BIG_NUMBER_RE.sub(_ja_big_number, s)
     s = "".join(ch for ch in s if ch not in "、。.,!?！？ 　\n「」『』…")
-    for a, b in READ:
+    for a, b in EXTRA_READ + READ:
         s = s.replace(b, a)
     for k, n in zip("一二三四五六七八九", "123456789"):
         s = s.replace(k, n)
@@ -821,7 +825,7 @@ class Painter:
                 self._of[k] = f
         return self._obase
 
-    def outro(self, t, lines, appear_at, btn_at):
+    def outro(self, t, lines, appear_at, btn_at, note=None, note_at=None):
         """CTAの画面。t は CTA が始まってからの秒。lines は最後の1つがボタン(フォローのお願い)"""
         img = self._outro_base().copy()
         # 斜めの白い帯がうっすら、ゆっくり流れる(止まった画面に見えないように)
@@ -875,11 +879,23 @@ class Painter:
                 fs = f
             lw = d.textlength(label, font=fs)
             d.text(((W - lw) / 2, y0 + (bh - 60 * scale) / 2 - 8 * scale), label, font=fs, fill=(255, 255, 255, 255))
+        # 11-06〜 ボタンの下に、解説のリクエストを呼びかける吹き出し(note。行ごとに list)
+        if note and note_at is not None and t >= note_at:
+            a = min(1.0, (t - note_at) / 0.3)
+            f = self._of["small"]
+            ny = y + 340 + (1 - a) * 20
+            lw = max(d.textlength(x, font=f) for x in note)
+            bx0, bx1 = (W - lw) / 2 - 44, (W + lw) / 2 + 44
+            bh = 40 + 58 * len(note)
+            d.polygon([(W / 2 - 22, ny), (W / 2 + 22, ny), (W / 2, ny - 26)], fill=(255, 255, 255, int(240 * a)))
+            d.rounded_rectangle([bx0, ny, bx1, ny + bh], radius=30, fill=(255, 255, 255, int(240 * a)))
+            for k, x in enumerate(note):
+                d.text(((W - d.textlength(x, font=f)) / 2, ny + 18 + 58 * k), x, font=f, fill=navy + (int(255 * a),))
         img.alpha_composite(layer)
         return img
 
 
-def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", credit=None, sfx=True, outro=None):
+def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", credit=None, sfx=True, outro=None, reading_check=False):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     work = Path(os.environ.get("LOCALAPPDATA", "/tmp")) / "story_video_work"
@@ -888,6 +904,14 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
 
     title, pages = parse_story(story_txt)
     log = []
+    if reading_check:
+        # 読み上げる前に、人名・地名・チーム名・流行りの言葉などの読み方を AI がネットで確かめる
+        import reading_check as rc
+        pairs, notes = rc.check([title] + [x for pg in pages for x in pg] + list((outro or {}).get("say") or []))
+        EXTRA_READ[:] = pairs
+        log += ["【固有名詞などの読み方の確認】"] + notes + [""]
+        print("
+".join(["  読み方の確認:"] + [f"    {n}" for n in notes]))
 
     # 1) 声: 題名 → 各文。並べて1本の音声にし、各文の開始時刻を記録する
     if engine == "voicevox":
@@ -927,7 +951,7 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
             t += len(a) / SR
     # 最後のCTA(outro: {lines: [...], say: [読み上げる文, ...]})。最後の文を読み終えてから画面を切り替える
     outro_t0 = None
-    outro_appear, outro_btn = [], 0
+    outro_appear, outro_btn, outro_note = [], 0, None
     if outro:
         audio.append(np.zeros(int(SR * 0.9), np.float32))
         t += 0.9
@@ -953,7 +977,10 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
         for x in body:
             outro_appear.append(s0 + (e0 - s0) * acc / tot - 0.1 - outro_t0)
             acc += len(x)
-        outro_btn = (starts[-1][0] if len(starts) > 1 else e0) - 0.1 - outro_t0
+        outro_btn = (starts[1][0] if len(starts) > 1 else e0) - 0.1 - outro_t0
+        # 3つ目の読み上げ(say の3つ目)があれば、それに合わせてリクエストの吹き出し(note)を出す(11-06〜)
+        if outro.get("note"):
+            outro_note = (starts[2][0] if len(starts) > 2 else starts[-1][1]) - 0.1 - outro_t0
     audio.append(np.zeros(int(SR * TAIL), np.float32))
     total = t + TAIL
     voice_all = np.concatenate(audio)
@@ -1035,7 +1062,7 @@ def build(story_txt, out_dir, voice, tempo, theme="story", engine="elevenlabs", 
         if outro_t0 is not None and tt >= outro_t0:
             # 黄色の画面が右からサッと入ってくる
             ot = tt - outro_t0
-            card = painter.outro(ot, outro["lines"], outro_appear, outro_btn)
+            card = painter.outro(ot, outro["lines"], outro_appear, outro_btn, outro.get("note"), outro_note)
             k = min(1.0, ot / 0.28)
             x = int(W * (1 - (1 - (1 - k) ** 3)))
             if x <= 0:
@@ -1091,7 +1118,7 @@ def build_for_account(config_path, story_txt, out_dir):
             reasons.append(f"ElevenLabs の残りが足りない(残り{rem[0]}字・必要{need}字)")
         else:
             try:
-                build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"], outro=cfg.get("outro"))
+                build(story_txt, out_dir, cfg["elevenlabs_voice"], cfg.get("elevenlabs_tempo", 1.0), cfg["theme"], outro=cfg.get("outro"), reading_check=cfg.get("reading_check", False))
                 engine = "elevenlabs"
             except ElevenLabsError as e:
                 reasons.append(f"ElevenLabs のエラー: {e}")
@@ -1110,7 +1137,7 @@ def build_for_account(config_path, story_txt, out_dir):
                 chatwork_alert(f"[info][title]⚠️Google 読み上げの使用が多めです[/title]今月の使用：{used:,}字／無料枠 {GOOGLE_FREE_CHARS:,}字（{used / GOOGLE_FREE_CHARS:.0%}）\n"
                                f"{GOOGLE_STOP_RATIO:.0%}に達すると自動で止めて VOICEVOX にします。ふつうは月15%前後です。[/info]")
             try:
-                build(story_txt, out_dir, cfg["google_voice"], cfg.get("google_rate", 1.0), cfg["theme"], engine="google", outro=cfg.get("outro"))
+                build(story_txt, out_dir, cfg["google_voice"], cfg.get("google_rate", 1.0), cfg["theme"], engine="google", outro=cfg.get("outro"), reading_check=cfg.get("reading_check", False))
                 engine = "google"
             except GoogleTTSError as e:
                 reasons.append(f"Google のエラー: {e}")
@@ -1123,7 +1150,7 @@ def build_for_account(config_path, story_txt, out_dir):
     # 3) VOICEVOX(無料・いつでも使える)
     if engine is None:
         build(story_txt, out_dir, str(cfg["voicevox_speaker"]), cfg.get("voicevox_tempo", 1.0), cfg["theme"],
-              engine="voicevox", credit=f"VOICEVOX:{cfg['voicevox_name']}", outro=cfg.get("outro"))
+              engine="voicevox", credit=f"VOICEVOX:{cfg['voicevox_name']}", outro=cfg.get("outro"), reading_check=cfg.get("reading_check", False))
         engine = "voicevox"
 
     names = {"google": "Google", "elevenlabs": "ElevenLabs", "voicevox": "VOICEVOX"}

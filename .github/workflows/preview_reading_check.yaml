@@ -1,0 +1,48 @@
+name: preview_reading_check
+on:
+  push:
+    branches: [preview-reading-check]
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, 'preview result')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      # 2026-10-23〜 画像ではなく動画で投稿する。apt(日本語フォントの導入)は時々止まって時間切れになるため使わない
+      - name: Cache fonts for video (Noto Sans/Serif JP)
+        id: fonts-cache
+        uses: actions/cache@v4
+        with:
+          path: fonts
+          key: noto-jp-otf-v1
+
+      - name: Download fonts if not cached
+        if: steps.fonts-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p fonts
+          for f in Sans/SubsetOTF/JP/NotoSansJP-Bold.otf Serif/SubsetOTF/JP/NotoSerifJP-SemiBold.otf; do
+            curl -fsSL --retry 3 -o "fonts/$(basename "$f")" "https://github.com/notofonts/noto-cjk/raw/main/$f"
+          done
+          ls -la fonts
+
+      - run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
+      - name: build
+        env:
+          GOOGLE_TTS_API_KEY: ${{ secrets.GOOGLE_TTS_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python make_story_video.py --config accounts/account2_news.yaml outputs/account2_news/20261107_120147.txt preview_out
+          rm -f preview_out/*.wav
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f preview_out outputs/reading_dict.json
+          git commit -m "preview result" && git push
