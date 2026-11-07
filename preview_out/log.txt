@@ -1,0 +1,7 @@
+  File "/home/runner/work/tts-auto-story/tts-auto-story/make_story_video.py", line 913
+    print("
+          ^
+SyntaxError: unterminated string literal (detected at line 913)
+exit 1
+Name: anthropic
+Version: 2.6.0
