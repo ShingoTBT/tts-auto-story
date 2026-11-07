@@ -40,9 +40,14 @@ jobs:
           SFX_BASE_URL: ${{ secrets.SFX_BASE_URL }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          python make_story_video.py --config accounts/account2_news.yaml outputs/account2_news/20261107_120147.txt preview_out
+          mkdir -p preview_out
+          set +e
+          python make_story_video.py --config accounts/account2_news.yaml outputs/account2_news/20261107_120147.txt preview_out > preview_out/log.txt 2>&1
+          echo "exit $?" >> preview_out/log.txt
+          pip show anthropic | head -2 >> preview_out/log.txt
+          set -e
           rm -f preview_out/*.wav
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f preview_out outputs/reading_dict.json
+          git add -f preview_out; git add -f outputs/reading_dict.json || true
           git commit -m "preview result" && git push
