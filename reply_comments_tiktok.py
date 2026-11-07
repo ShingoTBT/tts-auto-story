@@ -30,8 +30,31 @@ MAX_PER_RUN = 30
 EMOJIS = ["😊", "🥹", "🙏", "✨", "🫶", "👀", "💡", "🙌"]
 
 
+def wait_429(r):
+    """回数制限（1分60回）にかかったら、言われた秒数だけ待つ。待ったら True（2026-11-07 メイの投稿46本で読み残しが出た）"""
+    if r.status_code != 429:
+        return False
+    try:
+        sec = float((r.json().get("details") or {}).get("retryAfter") or 10)
+    except Exception:
+        sec = 10
+    time.sleep(min(sec, 60) + 1)
+    return True
+
+
+_last = [0.0]
+
+
 def call(method, path, key, **kw):
-    r = requests.request(method, f"{API}/{path}", headers={"Authorization": f"Bearer {key}"}, timeout=60, **kw)
+    # 1分60回の決まりに収まるよう、呼ぶ間を1.1秒あける
+    for _ in range(6):
+        gap = time.time() - _last[0]
+        if gap < 1.1:
+            time.sleep(1.1 - gap)
+        _last[0] = time.time()
+        r = requests.request(method, f"{API}/{path}", headers={"Authorization": f"Bearer {key}"}, timeout=60, **kw)
+        if not wait_429(r):
+            break
     try:
         body = r.json()
     except ValueError:
@@ -80,7 +103,7 @@ def run_account(config_path):
     # comments_since（日本時間の日付）より前に書かれたコメントには付けない（昔のコメントへの一斉返信を避ける）
     c_since = cfg.get("comments_since")
     c_since = datetime.datetime.fromisoformat(str(c_since)).replace(tzinfo=datetime.timezone(datetime.timedelta(hours=9))) if c_since else None
-    st, data = call("GET", "analytics", key, params={"platform": "tiktok", "accountId": acc, "limit": 50})
+    st, data = call("GET", "analytics", key, params={"platform": "tiktok", "accountId": acc, "limit": 100})
     posts = []
     for p in data.get("posts", []):
         try:
@@ -92,8 +115,17 @@ def run_account(config_path):
             posts.append((when, pid, (p.get("content") or "")[:30]))
     # analytics には投稿の 24〜48 時間後からしか出ないので、コメントの付いた投稿の一覧も足す(出したばかりの動画のコメントも拾う)
     known = {pid for _, pid, _ in posts}
-    st, data = call("GET", "inbox/comments", key, params={"accountId": acc})
-    for p in data.get("data", []) if st == 200 else []:
+    # 2026-11-07 ページ送りも読む（1ページ目だけだと、投稿やコメントが多いときに取りこぼす）
+    inbox, cur = [], None
+    for _ in range(10):
+        st, data = call("GET", "inbox/comments", key, params={"accountId": acc, **({"cursor": cur} if cur else {})})
+        if st != 200:
+            break
+        inbox += data.get("data", [])
+        cur = (data.get("pagination") or {}).get("nextCursor") or (data.get("pagination") or {}).get("cursor")
+        if not (data.get("pagination") or {}).get("hasMore") or not cur:
+            break
+    for p in inbox:
         try:
             when = datetime.datetime.fromisoformat((p.get("createdTime") or "").replace("Z", "+00:00"))
         except ValueError:
@@ -105,11 +137,20 @@ def run_account(config_path):
 
     count = 0
     for when, pid, title in sorted(posts, reverse=True):
-        st, data = call("GET", f"inbox/comments/{pid}", key, params={"accountId": acc, "limit": 100})
-        if st != 200:
+        comments, cur, st = [], None, 200
+        for _ in range(10):
+            st, data = call("GET", f"inbox/comments/{pid}", key, params={"accountId": acc, "limit": 100, **({"cursor": cur} if cur else {})})
+            if st != 200:
+                break
+            comments += data.get("comments", [])
+            pg = data.get("pagination") or {}
+            cur = pg.get("cursor") or pg.get("nextCursor")
+            if not pg.get("hasMore") or not cur:
+                break
+        if st != 200 and not comments:
             print(f"  コメントを読めませんでした {pid}: {st} {str(data)[:120]}")
             continue
-        for c in data.get("comments", []):
+        for c in comments:
             cid = c.get("id")
             if not cid or (c.get("from") or {}).get("isOwner"):
                 continue
@@ -138,9 +179,12 @@ def run_account(config_path):
                 liked = st_l == 200
             emoji = pick_reply(c, cfg)
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
-            r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
-                              headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
-                              json={"accountId": acc, "message": emoji, "commentId": cid})
+            for _ in range(4):
+                r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
+                                  headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
+                                  json={"accountId": acc, "message": emoji, "commentId": cid})
+                if not wait_429(r):
+                    break
             ok = r.status_code == 200
             print(f"  {title!r} のコメント {cid}: いいね{'○' if liked else '×'} 返信{emoji}{'○' if ok else '×'}")
             if ok:

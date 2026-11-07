@@ -7,3 +7,5 @@ chatwork_label: "みお｜転職3回したOL"
 tiktok_url: "https://tiktok.com/@3ol76"
 zernio_api_key_env: "ZERNIO_API_KEY"  # Zernio の1つ目(アカウント2と共用)
 zernio_account_id: "6ad99962b77e43f49267be1a"
+# 2026-11-07 すずの 10/29 の動画（9日前）に今付いたコメントが、直近7日の決まりで漏れていた → 昔の投稿もずっと見る
+days: 400

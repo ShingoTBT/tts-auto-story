@@ -6,3 +6,5 @@ chatwork_label: "りな｜マチアプで婚約した30歳"
 tiktok_url: "https://tiktok.com/@rina_machiapu"
 zernio_api_key_env: "ZERNIO_API_KEY_ROOTBUZZ"  # Zernio の4つ目(zernio4。ケイと同じ)
 zernio_account_id: "6adb3758d7ed1186922f6d6d"
+# 2026-11-07 すずの 10/29 の動画（9日前）に今付いたコメントが、直近7日の決まりで漏れていた → 昔の投稿もずっと見る
+days: 400
