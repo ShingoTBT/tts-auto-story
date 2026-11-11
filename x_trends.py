@@ -124,12 +124,19 @@ def build_candidate(name: str) -> dict | None:
     if len(posts) < 5:
         return None
     body = "\n".join(f"・{p[:280]}" for p in posts)
+    # 11-12〜 X の投稿でよく一緒に使われているハッシュタグ(多い順)。投稿のハッシュタグに入れる(generate_news.py)
+    counts = {}
+    for p in posts:
+        for t in dict.fromkeys(re.findall(r"#[^\s#、。!！?？]+", p)):
+            counts[t] = counts.get(t, 0) + 1
+    co_tags = [t for t, n in sorted(counts.items(), key=lambda x: -x[1]) if n >= 3 and t != name]
     return {
         "keyword": name,
         "article_url": "https://x.com/search?q=" + urllib.parse.quote(name),
         "article_source": "X トレンド",
         "article_text": (f"【SNSで話題の言葉】{name}\n\n【SNSの投稿（材料。そのまま使わない・個人を特定しない）】\n{body}")[:4000],
         "x_note": X_NOTE,
+        "x_tags": ([name] if name.startswith("#") else []) + co_tags[:3],
     }
 
 

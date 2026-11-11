@@ -84,6 +84,44 @@ def call_claude(system_prompt: str, user_message: str, model: str) -> str:
     return "".join(parts).strip()
 
 
+# 入れ替えてよい一般的なジャンルのタグ(固有名詞のタグは消さない)
+GENERIC_TAGS = {"#ニュース", "#ニュース解説", "#時事", "#エンタメ", "#芸能", "#話題", "#トレンド", "#経済", "#社会",
+                "#仕事", "#お金", "#スポーツ", "#邦楽", "#アイドル", "#ライブ", "#音楽", "#SNS", "#ネット", "#速報", "#生活"}
+
+
+def ensure_x_tags(text: str, candidate: dict) -> str:
+    """11-12〜 X のトレンドがネタのときは、そのハッシュタグ(例 #なにわまつり)を必ず先頭に入れる。
+    X でよく一緒に使われているタグも、1つまでジャンルのタグと入れ替えて入れる。合計5個は変えない
+    (ユーザー「#なにわまつり を取り上げているのに投稿に入っていなくてもったいない」)"""
+    want = []
+    kw = (candidate.get("keyword") or "").strip()
+    if candidate.get("x_note") and kw.startswith("#"):
+        want.append(kw)
+    co = [t for t in candidate.get("x_tags") or [] if t not in want][:1]
+    if not want and not co:
+        return text
+    lines = text.split("\n")
+    idx = next((i for i, l in enumerate(lines) if l.strip().startswith("#")), None)
+    if idx is None:
+        return text
+    tags = lines[idx].split()
+    must = want + co
+    rest = [t for t in tags if t not in must]
+    for t in must:
+        if len(rest) + len(must) <= 5:
+            break
+        # ジャンルのタグを後ろから外す。無ければいちばん後ろを外す
+        gen = [i for i, x in enumerate(rest) if x in GENERIC_TAGS]
+        rest.pop(gen[-1] if gen else -1)
+    new = must + rest
+    while len(new) > 5:
+        new.pop()
+    if new != tags:
+        print(f"X のハッシュタグを入れました: {' '.join(tags)} → {' '.join(new)}")
+    lines[idx] = " ".join(new)
+    return "\n".join(lines)
+
+
 def validate_hashtag_count(text: str) -> tuple[bool, str]:
     lines = [l for l in text.split("\n") if l.strip().startswith("#")]
     if not lines:
@@ -215,6 +253,8 @@ def _run():
                 f.write(f"[エラー: {msg}]\n\n--- 生成内容 ---\n\n{output_text}")
             print(f"デバッグファイル: {debug_path}")
             sys.exit(1)
+
+    output_text = ensure_x_tags(output_text, candidate)
 
     output_dir = Path(config["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
