@@ -1,0 +1,10 @@
+{
+  "engine": "Google",
+  "voice": "Leda",
+  "reason": "",
+  "chars": 400,
+  "google_used_this_month": 38909,
+  "google_free_chars": 1000000,
+  "elevenlabs_remaining": 97893,
+  "elevenlabs_limit": 121000
+}
