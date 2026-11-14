@@ -144,6 +144,47 @@ def trigger_workflow_dispatch(dispatch_token: str, workflow_file: str) -> bool:
         return False
 
 
+TOKEN_ALERT_STATE_PATH = Path("outputs/monitor_token_alert_state.json")
+TOKEN_WARN_DAYS = 14  # 合鍵の期限がこれより近くなったら知らせる(1日1回まで)
+
+
+def check_dispatch_token(dispatch_token: str, cw_token: str, cw_room: str) -> None:
+    """11-14〜 自動復旧に使う合鍵(GH_DISPATCH_TOKEN)が使えるか・いつ切れるかを確かめる。
+    合鍵そのものは出さない。使えない・期限が近いときは CW に知らせる(前は期限切れに気づけなかったため)"""
+    problem = None
+    try:
+        r = requests.get(f"{GITHUB_API_BASE}/repos/{GITHUB_OWNER}/{GITHUB_REPO}/actions/workflows",
+                         headers={"Authorization": f"Bearer {dispatch_token}", "Accept": "application/vnd.github+json"},
+                         params={"per_page": 1}, timeout=20)
+        expires = r.headers.get("github-authentication-token-expiration", "")
+        print(f"自動復旧の合鍵: {r.status_code}(期限 {expires or '不明'})")
+        if r.status_code != 200:
+            problem = f"自動復旧の合鍵（GH_DISPATCH_TOKEN）が使えません（{r.status_code}）。期限切れの可能性があります。"
+        elif expires:
+            exp = datetime.datetime.strptime(expires[:19], "%Y-%m-%d %H:%M:%S")
+            days = (exp - datetime.datetime.utcnow()).total_seconds() / 86400
+            if days < TOKEN_WARN_DAYS:
+                problem = f"自動復旧の合鍵（GH_DISPATCH_TOKEN）の期限が近いです（{expires[:10]}・あと約{days:.0f}日）。"
+    except Exception as e:
+        print(f"自動復旧の合鍵の確認に失敗: {e}")
+        return
+    if not problem:
+        return
+    state = {}
+    if TOKEN_ALERT_STATE_PATH.exists():
+        try:
+            state = json.loads(TOKEN_ALERT_STATE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            state = {}
+    last = state.get("last_alert_at")
+    if last and (datetime.datetime.now() - datetime.datetime.fromisoformat(last)).total_seconds() < 86400:
+        return
+    send_chatwork_alert(cw_token, cw_room,
+                        f"[To:{CHATWORK_MY_ACCOUNT_ID}]\n{problem}\nGitHub で合鍵を作り直して、Secrets の GH_DISPATCH_TOKEN を入れ直してください。")
+    TOKEN_ALERT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    TOKEN_ALERT_STATE_PATH.write_text(json.dumps({"last_alert_at": datetime.datetime.now().isoformat()}), encoding="utf-8")
+
+
 def check_credit_exhaustion() -> bool:
     """
     生成スクリプトのクラッシュログに、Anthropic APIのクレジット枯渇エラーが
@@ -224,6 +265,8 @@ def main():
     if check_credit_exhaustion():
         print("⚠️ Anthropic APIのクレジット枯渇を検知しました")
         send_credit_exhaustion_alert(cw_token, cw_room)
+    if dispatch_token:
+        check_dispatch_token(dispatch_token, cw_token, cw_room)
 
     for config_path in sys.argv[1:]:
         config = load_account_config(config_path)
