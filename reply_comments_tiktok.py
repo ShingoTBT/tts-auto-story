@@ -62,6 +62,43 @@ def call(method, path, key, **kw):
     return r.status_code, body
 
 
+def owner_replied(pid, comment, key, acc):
+    """このコメントに自分の返信が付いているか。True=付いている / False=確かに付いていない / None=確かめられない
+    TikTok は一覧の各コメントに返信を3件までしか載せない（Zernio の仕様）。返信が多いコメントでは自分の返信が
+    載らず「付いていない」と誤って判断し、重ねて送っていた（2026-11-15 メイで同じコメントに3つ）。
+    → 載っていなければ、そのコメントの返信を全部読み出して（commentId 指定）確かめる"""
+    inline = comment.get("replies") or []
+    if any((r.get("from") or {}).get("isOwner") for r in inline):
+        return True
+    count = comment.get("replyCount")
+    if count is not None and int(count) <= len(inline):
+        return False   # 返信は全部載っていて、その中に自分の返信は無い
+    count = int(count or 0)
+    replies, cur = [], None
+    for _ in range(10):
+        st, data = call("GET", f"inbox/comments/{pid}", key,
+                        params={"accountId": acc, "commentId": comment["id"], "limit": 100, **({"cursor": cur} if cur else {})})
+        if st != 200:
+            return None
+        replies += data.get("comments", [])
+        pg = data.get("pagination") or {}
+        cur = pg.get("cursor") or pg.get("nextCursor")
+        if not pg.get("hasMore") or not cur:
+            break
+    if any((r.get("from") or {}).get("isOwner") for r in replies):
+        return True
+    # 読み出せた数が返信の数より少ないときは、読み残しがあるかもしれないので「確かめられない」
+    return False if len(replies) >= count else None
+
+
+def reply_id(r):
+    """送った返信の ID（記録用）"""
+    try:
+        return ((r.json() or {}).get("data") or {}).get("commentId")
+    except ValueError:
+        return None
+
+
 def pick_reply(comment, cfg):
     """返す絵文字。アカウント設定の reply_rules（match の言葉がコメントに入っていたら reply を返す）を先に見る
     2026-10-30 ユーザー：金運すずの「〇〇しますように」などの願いごとには、手を合わせる「🙏✨」を"""
@@ -83,10 +120,11 @@ def run_account(config_path):
         print(f"[{label}] 合鍵かアカウントIDが無いので飛ばします")
         return
     log = Path(cfg.get("output_dir") or f"outputs/{cfg['account_name']}") / "comment_replies.jsonl"
-    # 返信を送った記録（コメントごとに送った時刻の一覧）。記録のあるコメントには二度と送らない。
-    # 2026-11-07〜11-15 は「自分の返信が見当たらなければ送り直す」にしていたが、Zernio のコメント一覧に
-    # 自分の返信が出ないことが多く、実際には付いている返信に重ねて送っていた（メイで同じコメントに3つ。
-    # ユーザー「重複はマズイ」）→ 送り直しはやめた（返信が1つ抜けるほうが、重複よりずっと良い）
+    # 返信を送った記録（コメントごとに送った時刻の一覧）。
+    # 2026-11-07 メイで、送信は成功（200）と返ったのに返信が付いていないことが2件あった → 送り直しを入れた。
+    # ところが一覧には返信が3件までしか載らず、付いている返信を「無い」と見て重ねて送っていた（11-15 ユーザー「重複はマズイ」）。
+    # → 送り直すのは、そのコメントの返信を全部読み出して、自分の返信が確かに無いと分かったときだけ（50分後・3回まで）。
+    #   確かめられないときは送らない（重複よりは、次の回に回すほうが良い）
     tries = {}
     if log.exists():
         for line in log.read_text(encoding="utf-8").splitlines():
@@ -96,6 +134,7 @@ def run_account(config_path):
             except Exception:
                 pass
     done = set(tries)
+    now = datetime.datetime.now(datetime.timezone.utc)
 
     # アカウント設定の days で、何日前までの投稿を見るか変えられる（メイ＝昔の投稿にも今コメントが付くので長く。2026-11-05）
     days = int(cfg.get("days", DAYS))
@@ -160,11 +199,25 @@ def run_account(config_path):
                         continue
                 except ValueError:
                     pass
-            if any((r.get("from") or {}).get("isOwner") for r in c.get("replies") or []):
-                done.add(cid)
-                continue   # すでに自分が返信している
+            retry = 0
             if cid in done:
-                continue   # 前の回で返信を送った（記録あり）
+                # 前の回で送った（記録あり）。50分たっても付いていないと確かめられたときだけ送り直す
+                t = tries.get(cid) or []
+                if not t or len(t) >= 3 or now - max(t) < datetime.timedelta(minutes=50):
+                    continue
+                has = owner_replied(pid, c, key, acc)
+                if has is not False:
+                    continue
+                retry = len(t)
+                print(f"  {cid}: 返信を全部確かめても自分の返信が無いので送り直します（{retry}回目）")
+            else:
+                has = owner_replied(pid, c, key, acc)
+                if has is True:
+                    done.add(cid)
+                    continue   # すでに自分が返信している
+                if has is None:
+                    print(f"  {cid}: 自分の返信があるか確かめられないので、今回は送りません")
+                    continue
             if count >= MAX_PER_RUN:
                 print(f"  1回の上限({MAX_PER_RUN}件)に達したので、残りは次の回に")
                 return
@@ -176,7 +229,7 @@ def run_account(config_path):
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
             for _ in range(4):
                 r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
-                                  headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}"},
+                                  headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
                                   json={"accountId": acc, "message": emoji, "commentId": cid})
                 if not wait_429(r):
                     break
@@ -186,7 +239,8 @@ def run_account(config_path):
                 log.parent.mkdir(parents=True, exist_ok=True)
                 with open(log, "a", encoding="utf-8") as f:
                     f.write(json.dumps({"at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(timespec="seconds"),
-                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked)}, ensure_ascii=False) + "\n")
+                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked),
+                                        "reply_id": reply_id(r), **({"retry": retry} if retry else {})}, ensure_ascii=False) + "\n")
                 done.add(cid)
                 count += 1
             time.sleep(random.uniform(3, 8))
