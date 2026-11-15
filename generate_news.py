@@ -168,7 +168,7 @@ def validate_question_ending(text: str) -> tuple[bool, str]:
 def validate_casual_tone(text: str) -> tuple[bool, str]:
     """カジュアルな口語表現が最低2箇所以上含まれているかを確認する"""
     casual_markers = [
-        "マジ", "わんちゃん", "って感じ", "だよね", "なんだって",
+        "マジ", "わんちゃん", "ワンチャン", "って感じ", "ている感じ", "感じです", "だよね", "なんだって",  # 11-15 ワンチャン(10-24 からカタカナで書く決まり)・〜ている感じ を追加
         "本当かな", "ガチ", "エグ", "ヤバ", "めちゃくちゃ", "めっちゃ",
     ]
     count = sum(text.count(marker) for marker in casual_markers)
@@ -220,6 +220,9 @@ def _run():
 
     max_retries = 5
     output_text = ""
+    # 11-15 くだけた言い回しの数だけが足りない原稿は、5回とも足りなかったときの控えにする
+    # (11-12 21:00・11-15 16:00 の回が、これだけで投稿されずに終わっていたため。言い回しが少し硬いほうが、回が抜けるよりずっと良い)
+    tone_only_fallback = None
     for attempt in range(1, max_retries + 1):
         output_text = call_claude(system_prompt, user_message, config["model"])
         output_text = strip_meta_commentary(output_text)
@@ -235,16 +238,26 @@ def _run():
             is_valid, msg = validate_hashtag_count(output_text)
         if is_valid:
             is_valid, msg = validate_question_ending(output_text)
+        tone_short = False
         if is_valid and config.get("require_casual_tone", True):   # 解説ニュースは若者言葉を使わないので確認しない
             is_valid, msg = validate_casual_tone(output_text)
-        if is_valid:
+            tone_short = not is_valid
+            tone_msg = msg
+        if is_valid or tone_short:
             leak = check_ai_leak(output_text)
             if leak:
-                is_valid, msg = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」"
+                is_valid, msg, tone_short = False, f"AI が作っているとわかる文があるので作り直します: 「{leak}」", False
         if is_valid:
             break
+        if tone_short:
+            msg = tone_msg
+            tone_only_fallback = output_text
 
         print(f"[試行{attempt}] フォーマット不正: {msg}")
+        if attempt == max_retries and tone_only_fallback:
+            print("くだけた言い回しは足りないが、ほかの決まりはすべて守れている原稿で投稿します")
+            output_text = tone_only_fallback
+            break
         if attempt == max_retries:
             debug_dir = Path(config["output_dir"])
             debug_dir.mkdir(parents=True, exist_ok=True)

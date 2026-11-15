@@ -108,7 +108,7 @@ def validate_question_ending(text: str) -> tuple[bool, str]:
 def validate_casual_tone(text: str) -> tuple[bool, str]:
     """カジュアルな口語表現が最低2箇所以上含まれているかを確認する"""
     casual_markers = [
-        "マジ", "わんちゃん", "って感じ", "だよね", "なんだって",
+        "マジ", "わんちゃん", "ワンチャン", "って感じ", "ている感じ", "感じです", "だよね", "なんだって",  # 11-15 ワンチャン(10-24 からカタカナで書く決まり)・〜ている感じ を追加
         "本当かな", "ガチ", "エグ", "ヤバ", "めちゃくちゃ", "めっちゃ",
     ]
     count = sum(text.count(marker) for marker in casual_markers)
