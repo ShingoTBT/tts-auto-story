@@ -123,7 +123,7 @@ def run_account(config_path):
     # 返信を送った記録（コメントごとに送った時刻の一覧）。
     # 2026-11-07 メイで、送信は成功（200）と返ったのに返信が付いていないことが2件あった → 送り直しを入れた。
     # ところが一覧には返信が3件までしか載らず、付いている返信を「無い」と見て重ねて送っていた（11-15 ユーザー「重複はマズイ」）。
-    # → 送り直すのは、そのコメントの返信を全部読み出して、自分の返信が確かに無いと分かったときだけ（50分後・3回まで）。
+    # → 送り直すのは、そのコメントの返信を全部読み出して、自分の返信が確かに無いと分かったときだけ（送ってから50分〜6時間・3回まで）。
     #   確かめられないときは送らない（重複よりは、次の回に回すほうが良い）
     tries = {}
     if log.exists():
@@ -201,9 +201,10 @@ def run_account(config_path):
                     pass
             retry = 0
             if cid in done:
-                # 前の回で送った（記録あり）。50分たっても付いていないと確かめられたときだけ送り直す
+                # 前の回で送った（記録あり）。送ってから50分〜6時間のあいだに、付いていないと確かめられたときだけ送り直す
+                # （6時間より前のものまで毎回確かめると、何百件も読みに行って重くなるため）
                 t = tries.get(cid) or []
-                if not t or len(t) >= 3 or now - max(t) < datetime.timedelta(minutes=50):
+                if not t or len(t) >= 3 or not (datetime.timedelta(minutes=50) <= now - max(t) <= datetime.timedelta(hours=6)):
                     continue
                 has = owner_replied(pid, c, key, acc)
                 if has is not False:
