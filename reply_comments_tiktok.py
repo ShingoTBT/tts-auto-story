@@ -83,9 +83,10 @@ def run_account(config_path):
         print(f"[{label}] 合鍵かアカウントIDが無いので飛ばします")
         return
     log = Path(cfg.get("output_dir") or f"outputs/{cfg['account_name']}") / "comment_replies.jsonl"
-    # 返信を送った記録（コメントごとに送った時刻の一覧）。
-    # 2026-11-07 メイで、送信は成功（200）と返ったのに返信が付いていないことが2件あった
-    # → 記録があっても自分の返信が見当たらなければ、50分以上たってから送り直す（3回まで）
+    # 返信を送った記録（コメントごとに送った時刻の一覧）。記録のあるコメントには二度と送らない。
+    # 2026-11-07〜11-15 は「自分の返信が見当たらなければ送り直す」にしていたが、Zernio のコメント一覧に
+    # 自分の返信が出ないことが多く、実際には付いている返信に重ねて送っていた（メイで同じコメントに3つ。
+    # ユーザー「重複はマズイ」）→ 送り直しはやめた（返信が1つ抜けるほうが、重複よりずっと良い）
     tries = {}
     if log.exists():
         for line in log.read_text(encoding="utf-8").splitlines():
@@ -95,7 +96,6 @@ def run_account(config_path):
             except Exception:
                 pass
     done = set(tries)
-    now = datetime.datetime.now(datetime.timezone.utc)
 
     # アカウント設定の days で、何日前までの投稿を見るか変えられる（メイ＝昔の投稿にも今コメントが付くので長く。2026-11-05）
     days = int(cfg.get("days", DAYS))
@@ -163,13 +163,8 @@ def run_account(config_path):
             if any((r.get("from") or {}).get("isOwner") for r in c.get("replies") or []):
                 done.add(cid)
                 continue   # すでに自分が返信している
-            retry = 0
             if cid in done:
-                t = tries.get(cid) or []
-                if not t or len(t) >= 3 or now - max(t) < datetime.timedelta(minutes=50):
-                    continue
-                retry = len(t)
-                print(f"  {cid}: 前の返信が付いていないので送り直します（{retry}回目）")
+                continue   # 前の回で返信を送った（記録あり）
             if count >= MAX_PER_RUN:
                 print(f"  1回の上限({MAX_PER_RUN}件)に達したので、残りは次の回に")
                 return
@@ -181,7 +176,7 @@ def run_account(config_path):
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
             for _ in range(4):
                 r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
-                                  headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
+                                  headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}"},
                                   json={"accountId": acc, "message": emoji, "commentId": cid})
                 if not wait_429(r):
                     break
@@ -191,7 +186,7 @@ def run_account(config_path):
                 log.parent.mkdir(parents=True, exist_ok=True)
                 with open(log, "a", encoding="utf-8") as f:
                     f.write(json.dumps({"at": datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).isoformat(timespec="seconds"),
-                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked), **({"retry": retry} if retry else {})}, ensure_ascii=False) + "\n")
+                                        "post_id": pid, "comment_id": cid, "emoji": emoji, "liked": bool(liked)}, ensure_ascii=False) + "\n")
                 done.add(cid)
                 count += 1
             time.sleep(random.uniform(3, 8))
