@@ -30,7 +30,7 @@ Claude のクラウドの定期実行（毎朝9:00 JST）がこの手順で点�
    - **原稿づくりで止まった回は GitHub 上「成功」と出る**。本数との突き合わせで見つける
 3. **失敗した実行**：同じ API の `status=failure`（前日分）
 4. **コメント返し**（`reply_comments_tiktok.py`）：`outputs/*/comment_replies.jsonl` で、同じ comment_id が retry なしで2回以上あれば重複の疑い。retry 付きが急に増えていないか
-5. **Threads の広告コメント**（`check_and_reply_comments.py`）：同じ投稿に2回付いていないか（記録のファイルで確認）
+5. **Threads の広告コメント**（`check_and_reply_comments.py`）：付けた投稿は `outputs/account3_parenting/posted_threads.jsonl`・`outputs/account4_threads/posted_threads.jsonl` の各行に `"commented": true` が付く（別のファイルは無い）。前日に付いた投稿の数と、`account3_comment_check` の実行が毎時動いて失敗していないかを見る。実際の Threads 上の重複は Zernio のキーが無いと見られないので、同じ投稿の行が2つある・同じ時刻に実行が2回重なっている、などの疑いがあれば記録してオーナーに知らせる
 6. **監視**：`outputs/monitor_*.json`、ニュースの記録の `elevenlabs_remaining`（声の残り）
 
 ## 異常があったとき
