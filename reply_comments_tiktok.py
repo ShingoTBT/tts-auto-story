@@ -42,6 +42,20 @@ def wait_429(r):
     return True
 
 
+def request_retry(method, url, **kw):
+    """Zernio との接続が一瞬切れた（ConnectionResetError など）ときは、少し待って3回までやり直す。
+    11-13・11-16 に全アカウントで接続が切られ、回ごと失敗して失敗メールが届いていた（次の回では直っていた）。
+    返信の送信もやり直してよい：同じ Idempotency-Key なら Zernio は二重に投稿しない"""
+    for i, wait in enumerate((5, 20, 60, None)):
+        try:
+            return requests.request(method, url, **kw)
+        except (requests.ConnectionError, requests.Timeout) as e:
+            if wait is None:
+                raise
+            print(f"  接続が切れたので {wait} 秒待ってやり直します（{i + 1}回目）: {type(e).__name__}")
+            time.sleep(wait)
+
+
 _last = [0.0]
 
 
@@ -52,7 +66,7 @@ def call(method, path, key, **kw):
         if gap < 1.1:
             time.sleep(1.1 - gap)
         _last[0] = time.time()
-        r = requests.request(method, f"{API}/{path}", headers={"Authorization": f"Bearer {key}"}, timeout=60, **kw)
+        r = request_retry(method, f"{API}/{path}", headers={"Authorization": f"Bearer {key}"}, timeout=60, **kw)
         if not wait_429(r):
             break
     try:
@@ -229,7 +243,7 @@ def run_account(config_path):
             emoji = pick_reply(c, cfg)
             # Idempotency-Key: やり直しても同じコメントに二重に返信しない
             for _ in range(4):
-                r = requests.post(f"{API}/inbox/comments/{pid}", timeout=60,
+                r = request_retry("POST", f"{API}/inbox/comments/{pid}", timeout=60,
                                   headers={"Authorization": f"Bearer {key}", "Idempotency-Key": f"emoji-{cid}" + (f"-r{retry}" if retry else "")},
                                   json={"accountId": acc, "message": emoji, "commentId": cid})
                 if not wait_429(r):
