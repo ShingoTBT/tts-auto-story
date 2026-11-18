@@ -91,6 +91,14 @@ def validate_length(text: str, min_chars: int, max_chars: int) -> tuple[bool, st
     return True, "OK"
 
 
+def clean_dedup_title(t: str) -> str:
+    """重複チェック用の要約として使える短い一言だけを返す。長文・複数行（AIの相談文や解説が混ざったもの）は空にする"""
+    t = (t or "").strip()
+    if not t or "\n" in t or len(t) > 40:
+        return ""
+    return t.replace("**", "").strip()
+
+
 def summarize_for_dedup(text: str, model: str) -> str:
     """投稿本文から、重複チェック用の短い要約(シチュエーションの型)をClaudeに作らせる"""
     client = anthropic.Anthropic()
@@ -98,11 +106,14 @@ def summarize_for_dedup(text: str, model: str) -> str:
         model=model,
         **claude_extra_params(model),
         max_tokens=60,
-        system="与えられた投稿のシチュエーションを、10〜20文字程度の一言で要約してください。説明は不要です。",
+        system=(
+            "与えられた投稿のシチュエーションを、10〜20文字程度の一言で要約してください。"
+            "要約の一言だけを1行で出力し、投稿への返事・共感・解説・見出し・記号は書かないでください。"
+        ),
         messages=[{"role": "user", "content": text}],
     )
     parts = [b.text for b in response.content if b.type == "text"]
-    return "".join(parts).strip()
+    return clean_dedup_title("".join(parts)) or "（要約できず）"
 
 
 def main():
@@ -138,9 +149,14 @@ def _run():
     config = load_account_config(sys.argv[1])
 
     system_prompt = load_system_prompt(config["prompt_file"])
-    recent_titles = load_recent_titles(
-        config["titles_log_file"], config.get("recent_titles_count", 30)
-    )
+    # 過去に混ざった長文・複数行の要約は、AIが「依頼を断る文」を返す原因になるので除いて読み込む
+    _count = config.get("recent_titles_count", 30)
+    recent_titles = [
+        c for c in (
+            clean_dedup_title(t)
+            for t in load_recent_titles(config["titles_log_file"], _count * 4)
+        ) if c and c != "（要約できず）"
+    ][-_count:]
     topic_categories = config.get("topic_categories")
     user_message = build_user_message(recent_titles, topic_categories)
 
