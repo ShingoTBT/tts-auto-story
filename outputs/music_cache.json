@@ -701,7 +701,8 @@
    "id": "7696358408170178612",
    "name": "あの子は可愛いあたしはこいびと / ゆなんなん",
    "genres": [
-    "ALL"
+    "POP",
+    "CHINESE_POP"
    ],
    "sec": 60
   },
@@ -734,7 +735,7 @@
    "id": "7478246472174143489",
    "name": "Dance Like Nobody’s Watching - Instrumental Version / Siine",
    "genres": [
-    "ELECTRONIC"
+    "ALL"
    ],
    "sec": 245
   },
