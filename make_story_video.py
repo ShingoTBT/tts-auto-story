@@ -186,11 +186,23 @@ def _check(h, mp3, ref):
     return difflib.SequenceMatcher(None, _norm(ref), _norm(heard)).ratio(), heard
 
 
+def _decodable(mp3):
+    """音声ファイルが壊れていないか(ffmpeg で最後まで読めるか)。壊れた声のまま動画づくりに進むと、その回が丸ごと止まるため"""
+    try:
+        r = subprocess.run(["ffmpeg", "-v", "error", "-i", str(mp3), "-f", "null", "-"],
+                           capture_output=True, timeout=120)
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 def synth(text, voice, tempo, cache_dir, out_wav, log):
     h = {"xi-api-key": api_key()}
     say = to_reading(text)
     tag = hashlib.md5(f"{voice}|{MODEL}|{say}".encode()).hexdigest()[:12]
     best = cache_dir / f"{tag}.mp3"
+    if best.exists() and not _decodable(best):
+        best.unlink()   # 前に壊れた声が残っていたら作り直す
     if not best.exists():
         tries = []
         for n in range(3):
@@ -200,11 +212,17 @@ def synth(text, voice, tempo, cache_dir, out_wav, log):
                 raise ElevenLabsError(f"ElevenLabs エラー {r.status_code}: {r.text[:300]}")
             p = cache_dir / f"{tag}_{n}.mp3"
             p.write_bytes(r.content)
+            if not _decodable(p):
+                tries.append((-1.0, p, "(壊れた音声)"))
+                continue
             s, heard = _check(h, p, text)
             tries.append((s, p, heard))
             if s >= 0.95:
                 break
         s, p, heard = max(tries, key=lambda x: x[0])
+        if s < 0:
+            # 3回とも壊れた音声。ElevenLabsError にして次の声(Google→VOICEVOX)に切り替える
+            raise ElevenLabsError("ElevenLabs の音声が3回とも壊れていた")
         p.replace(best)
         (cache_dir / f"{tag}.txt").write_text(f"{s:.3f}\t{heard}", encoding="utf-8")
     s, heard = (cache_dir / f"{tag}.txt").read_text(encoding="utf-8").split("\t", 1)
