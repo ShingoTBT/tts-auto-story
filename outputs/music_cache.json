@@ -103,7 +103,7 @@
    "id": "7423305583476475920",
    "name": "私可愛いんじゃない？ / みずかげりんぶ",
    "genres": [
-    "ELECTRONIC"
+    "ALL"
    ],
    "sec": 29
   },
@@ -128,7 +128,7 @@
    "id": "7478947357292824577",
    "name": "春風 / CopyA",
    "genres": [
-    "ALL"
+    "POP"
    ],
    "sec": 59
   },
@@ -211,7 +211,7 @@
    "id": "7010712490715645954",
    "name": "Rindu Sendiri (Dilan 1990) / Iqbaal Ramadhan",
    "genres": [
-    "POP"
+    "ALL"
    ],
    "sec": 235
   },
@@ -414,8 +414,7 @@
    "id": "6817179144766375938",
    "name": "Anime song-like pops of cute atmosphere / usagirikuhyo",
    "genres": [
-    "POP",
-    "J-POP"
+    "ALL"
    ],
    "sec": 101
   },
@@ -455,7 +454,8 @@
    "id": "7076440953078155266",
    "name": "Late Spring / BCD Studio",
    "genres": [
-    "ALL"
+    "CHILL_BEATS",
+    "HIP_HOP/RAP"
    ],
    "sec": 63
   },
