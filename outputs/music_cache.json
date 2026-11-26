@@ -113,7 +113,8 @@
    "id": "7499747820896356368",
    "name": "幸せな花を咲かせていこう / Wonderful Flower",
    "genres": [
-    "ALL"
+    "POP",
+    "CHINESE_POP"
    ],
    "sec": 41
   },
@@ -626,8 +627,7 @@
    "id": "7307638042792937473",
    "name": "El Tiempo no Regresa (Remastered 2023) / Armando Guevara",
    "genres": [
-    "HIP_HOP/RAP",
-    "TRAP_RAP"
+    "ALL"
    ],
    "sec": 20
   },
@@ -643,8 +643,7 @@
    "id": "7696358408170178612",
    "name": "あの子は可愛いあたしはこいびと / ゆなんなん",
    "genres": [
-    "POP",
-    "CHINESE_POP"
+    "ALL"
    ],
    "sec": 60
   },
