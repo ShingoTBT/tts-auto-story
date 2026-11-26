@@ -78,7 +78,7 @@
    "id": "6763540024806868994",
    "name": "The Pitch Podcast Theme Song / Breakmaster Cylinder",
    "genres": [
-    "ELECTRONIC"
+    "ALL"
    ],
    "sec": 60
   },
@@ -103,7 +103,7 @@
    "id": "7423305583476475920",
    "name": "私可愛いんじゃない？ / みずかげりんぶ",
    "genres": [
-    "ALL"
+    "ELECTRONIC"
    ],
    "sec": 29
   },
@@ -128,7 +128,7 @@
    "id": "7478947357292824577",
    "name": "春風 / CopyA",
    "genres": [
-    "POP"
+    "ALL"
    ],
    "sec": 59
   },
@@ -211,7 +211,7 @@
    "id": "7010712490715645954",
    "name": "Rindu Sendiri (Dilan 1990) / Iqbaal Ramadhan",
    "genres": [
-    "ALL"
+    "POP"
    ],
    "sec": 235
   },
@@ -267,7 +267,7 @@
    "id": "7356836665607276561",
    "name": "DON`T STOP - Slowed++ / GLXXMSTRIDER",
    "genres": [
-    "ELECTRONIC"
+    "ALL"
    ],
    "sec": 60
   },
@@ -414,7 +414,8 @@
    "id": "6817179144766375938",
    "name": "Anime song-like pops of cute atmosphere / usagirikuhyo",
    "genres": [
-    "ALL"
+    "POP",
+    "J-POP"
    ],
    "sec": 101
   },
@@ -493,12 +494,12 @@
    "sec": 44
   },
   {
-   "id": "7413011603664259088",
+   "id": "7413003105330448385",
    "name": "Double Apple / David Cutter Music",
    "genres": [
     "HIP_HOP/RAP"
    ],
-   "sec": 104
+   "sec": 60
   },
   {
    "id": "7338455478790490114",
@@ -657,12 +658,12 @@
    "sec": 60
   },
   {
-   "id": "7540730590665197585",
+   "id": "7540730190818035713",
    "name": "Zamba Tuya / Daniel Frascoli",
    "genres": [
     "LATIN"
    ],
-   "sec": 161
+   "sec": 60
   },
   {
    "id": "7065431623969277953",
