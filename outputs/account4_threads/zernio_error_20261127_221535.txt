@@ -1,0 +1,2 @@
+status_code: 429
+response_body: {"error":"Rate limit exceeded. Please retry after 24 seconds.","details":{"currentCount":61,"limit":60,"retryAfterSeconds":24}}
