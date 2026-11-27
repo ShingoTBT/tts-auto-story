@@ -26,6 +26,9 @@ import yaml
 API = "https://zernio.com/api/v1"
 DAYS = 7
 MAX_PER_RUN = 30
+# 1アカウントにかけてよい秒数。2026-11-28 回が20分の時間切れで何度も打ち切られ、最後の順番のメイ（ルートバズ）に
+# 6時間返信が付かなかった → どのアカウントも時間を使い切らないよう区切り、残りは次の回に（新しい投稿から順に見る）
+MAX_SEC_PER_ACCOUNT = 120
 # どんな内容のコメントにも合う、前向きな絵文字(ユーザー希望「顔文字より絵文字」10-23)
 EMOJIS = ["😊", "🥹", "🙏", "✨", "🫶", "👀", "💡", "🙌"]
 
@@ -126,6 +129,7 @@ def pick_reply(comment, cfg):
 
 
 def run_account(config_path):
+    started = time.time()
     cfg = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
     label = cfg.get("chatwork_label", cfg.get("display_name"))
     key = (os.environ.get(cfg.get("zernio_api_key_env", "ZERNIO_API_KEY")) or "").strip()  # 登録時に末尾の改行が入っても動くように（2026-11-06 メイで発生）
@@ -190,6 +194,9 @@ def run_account(config_path):
 
     count = 0
     for when, pid, title in sorted(posts, reverse=True):
+        if time.time() - started > int(cfg.get("max_seconds", MAX_SEC_PER_ACCOUNT)):
+            print(f"  {int(time.time() - started)}秒たったので、残りの投稿は次の回に（ほかのアカウントの時間を残すため）")
+            break
         comments, cur, st = [], None, 200
         for _ in range(10):
             st, data = call("GET", f"inbox/comments/{pid}", key, params={"accountId": acc, "limit": 100, **({"cursor": cur} if cur else {})})

@@ -16,7 +16,7 @@ concurrency:
 jobs:
   reply:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35  # 2026-11-28 20分で打ち切られ続けた。アカウントごとに2分で区切るので 8×2分＋余裕
     permissions:
       contents: write
     steps:
